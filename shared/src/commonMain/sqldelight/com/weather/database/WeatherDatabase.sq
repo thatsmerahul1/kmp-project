@@ -1,0 +1,41 @@
+CREATE TABLE WeatherForecast (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date INTEGER NOT NULL,
+    condition TEXT NOT NULL,
+    temperature_high REAL NOT NULL,
+    temperature_low REAL NOT NULL,
+    humidity INTEGER NOT NULL,
+    icon TEXT NOT NULL,
+    description TEXT NOT NULL,
+    cached_at INTEGER NOT NULL,
+    UNIQUE(date)
+);
+
+selectAll:
+SELECT * FROM WeatherForecast ORDER BY date ASC;
+
+selectByDateRange:
+SELECT * FROM WeatherForecast 
+WHERE date BETWEEN ? AND ? 
+ORDER BY date ASC;
+
+selectByDate:
+SELECT * FROM WeatherForecast 
+WHERE date = ?;
+
+insertOrReplace:
+INSERT OR REPLACE INTO WeatherForecast 
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteOlderThan:
+DELETE FROM WeatherForecast WHERE cached_at < ?;
+
+deleteAll:
+DELETE FROM WeatherForecast;
+
+isCacheValid:
+SELECT COUNT(*) > 0 FROM WeatherForecast 
+WHERE cached_at > ? LIMIT 1;
+
+countRecords:
+SELECT COUNT(*) FROM WeatherForecast;
