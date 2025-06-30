@@ -1,37 +1,125 @@
 import SwiftUI
+import shared
 
-struct WeatherListView: View {
-    var body: some View {
-        List {
-            ForEach(sampleWeatherData, id: \.id) { weather in
-                WeatherRowView(weather: weather)
+class WeatherViewModelWrapper: ObservableObject {
+    @Published var uiState: WeatherUiState
+    private let viewModel: IOSWeatherViewModel
+    
+    init() {
+        self.viewModel = IOSWeatherViewModel()
+        self.uiState = viewModel.uiState.value as! WeatherUiState
+        
+        // Start observing state changes
+        startObserving()
+    }
+    
+    private func startObserving() {
+        // For now, we'll use a simple timer to poll for changes
+        // In a production app, you'd want to use proper Flow observation
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                if let newState = self?.viewModel.uiState.value as? WeatherUiState {
+                    self?.uiState = newState
+                }
             }
         }
-        .refreshable {
-            // Refresh functionality will be added with KMP integration
+    }
+    
+    func onEvent(_ event: WeatherUiEvent) {
+        viewModel.onEvent(event: event)
+    }
+    
+    func loadWeather() {
+        viewModel.loadWeather()
+    }
+    
+    func refreshWeather() {
+        viewModel.refreshWeather()
+    }
+    
+    func retryLoad() {
+        viewModel.retryLoad()
+    }
+    
+    deinit {
+        viewModel.dispose()
+    }
+}
+
+struct WeatherListView: View {
+    @StateObject private var viewModelWrapper = WeatherViewModelWrapper()
+    @State private var selectedWeather: Weather?
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                if viewModelWrapper.uiState.isLoading {
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading weather...")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = viewModelWrapper.uiState.error {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                        
+                        Text("Error")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Text(error)
+                            .font(.body)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Button("Retry") {
+                            viewModelWrapper.retryLoad()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(viewModelWrapper.uiState.weatherList, id: \.date) { weather in
+                        Button(action: {
+                            selectedWeather = weather
+                        }) {
+                            WeatherRowView(weather: weather)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .refreshable {
+                        viewModelWrapper.refreshWeather()
+                    }
+                }
+            }
+            .navigationTitle("Weather Forecast")
+            .onAppear {
+                viewModelWrapper.loadWeather()
+            }
+            .sheet(item: Binding<Weather?>(
+                get: { selectedWeather },
+                set: { selectedWeather = $0 }
+            )) { weather in
+                WeatherDetailView(weather: weather)
+            }
         }
     }
 }
 
-struct WeatherData: Identifiable {
-    let id = UUID()
-    let dayName: String
-    let date: String
-    let condition: String
-    let emoji: String
-    let highTemp: Int
-    let lowTemp: Int
-    let humidity: Int
-    let description: String
+extension Weather: @retroactive Identifiable {
+    public var id: String {
+        return "\(date.year)-\(date.month.ordinal)-\(date.dayOfMonth)"
+    }
 }
 
-let sampleWeatherData = [
-    WeatherData(dayName: "Today", date: "2024-06-30", condition: "Clear", emoji: "☀️", highTemp: 22, lowTemp: 15, humidity: 65, description: "Clear sky"),
-    WeatherData(dayName: "Tomorrow", date: "2024-07-01", condition: "Partly Cloudy", emoji: "⛅", highTemp: 20, lowTemp: 13, humidity: 70, description: "Partly cloudy"),
-    WeatherData(dayName: "Tuesday", date: "2024-07-02", condition: "Rain", emoji: "🌧️", highTemp: 18, lowTemp: 12, humidity: 85, description: "Light rain"),
-    WeatherData(dayName: "Wednesday", date: "2024-07-03", condition: "Cloudy", emoji: "☁️", highTemp: 19, lowTemp: 14, humidity: 75, description: "Overcast"),
-]
-
 #Preview {
-    WeatherListView()
+    NavigationView {
+        WeatherListView()
+            .navigationTitle("Weather Forecast")
+    }
 }

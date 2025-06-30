@@ -70,7 +70,7 @@ Add your OpenWeatherMap API key to `gradle.properties`:
 ```properties
 WEATHER_API_KEY=your_api_key_here
 WEATHER_BASE_URL=https://api.openweathermap.org/data/2.5/
-DEFAULT_LOCATION=London,UK
+DEFAULT_LOCATION=Bengaluru,India
 ```
 
 ### 3. Build and Run

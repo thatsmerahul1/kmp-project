@@ -13,7 +13,10 @@
 		842E38FE2C94AB8F00427C3E /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 842E38FD2C94AB8F00427C3E /* Preview Assets.xcassets */; };
 		842E39052C94AC1B00427C3E /* WeatherListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842E39042C94AC1B00427C3E /* WeatherListView.swift */; };
 		842E39072C94AC2600427C3E /* WeatherRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842E39062C94AC2600427C3E /* WeatherRowView.swift */; };
+		842E390B2C94AC5000427C3E /* WeatherDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842E390A2C94AC5000427C3E /* WeatherDetailView.swift */; };
+		842E390C2C94AC6000427C3E /* WeatherUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 842E390D2C94AC6000427C3E /* WeatherUtils.swift */; };
 		842E39092C94AC3F00427C3E /* shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 842E39082C94AC3F00427C3E /* shared.framework */; };
+		842E390E2C94AC7000427C3E /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 842E390F2C94AC7000427C3E /* libsqlite3.tbd */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,7 +27,10 @@
 		842E38FD2C94AB8F00427C3E /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		842E39042C94AC1B00427C3E /* WeatherListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherListView.swift; sourceTree = "<group>"; };
 		842E39062C94AC2600427C3E /* WeatherRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherRowView.swift; sourceTree = "<group>"; };
+		842E390A2C94AC5000427C3E /* WeatherDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherDetailView.swift; sourceTree = "<group>"; };
+		842E390D2C94AC6000427C3E /* WeatherUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherUtils.swift; sourceTree = "<group>"; };
 		842E39082C94AC3F00427C3E /* shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = shared.framework; path = ../shared/build/bin/iosSimulatorArm64/debugFramework/shared.framework; sourceTree = "<group>"; };
+		842E390F2C94AC7000427C3E /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +39,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				842E39092C94AC3F00427C3E /* shared.framework in Frameworks */,
+				842E390E2C94AC7000427C3E /* libsqlite3.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -81,6 +88,8 @@
 			children = (
 				842E39042C94AC1B00427C3E /* WeatherListView.swift */,
 				842E39062C94AC2600427C3E /* WeatherRowView.swift */,
+				842E390A2C94AC5000427C3E /* WeatherDetailView.swift */,
+				842E390D2C94AC6000427C3E /* WeatherUtils.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -179,6 +188,8 @@
 				842E39052C94AC1B00427C3E /* WeatherListView.swift in Sources */,
 				842E38F92C94AB8E00427C3E /* ContentView.swift in Sources */,
 				842E39072C94AC2600427C3E /* WeatherRowView.swift in Sources */,
+				842E390B2C94AC5000427C3E /* WeatherDetailView.swift in Sources */,
+				842E390C2C94AC6000427C3E /* WeatherUtils.swift in Sources */,
 				842E38F72C94AB8E00427C3E /* WeatherApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

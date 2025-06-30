@@ -29,21 +29,17 @@ class WeatherRepositoryImpl(
             
             // 3. Fetch fresh data from remote (always attempt for offline-first strategy)
             try {
-                val apiKey = appPreferences.getApiKey()
                 val location = appPreferences.getDefaultLocation()
                 
-                if (apiKey.isNotEmpty()) {
-                    val freshData = remoteDataSource.getWeatherForecast(location, apiKey)
-                    
-                    // 4. Save fresh data to cache
-                    localDataSource.saveWeatherForecasts(freshData)
-                    
-                    // 5. Emit fresh data if it's different from cached or cache is invalid
-                    if (!isCacheValid || freshData != cachedData) {
-                        emit(Result.success(freshData))
-                    }
-                } else if (cachedData.isEmpty()) {
-                    emit(Result.failure(Exception("API key not configured and no cached data available")))
+                val freshData = remoteDataSource.getWeatherForecast(location)
+                
+                // 4. Save fresh data to cache
+                localDataSource.saveWeatherForecasts(freshData)
+                
+                // 5. Emit updated data from the database
+                val updatedCache = localDataSource.getWeatherForecasts()
+                if (!isCacheValid || updatedCache != cachedData) {
+                    emit(Result.success(updatedCache))
                 }
             } catch (networkException: Exception) {
                 // 6. If network fails and we have no cached data, emit error
@@ -59,17 +55,13 @@ class WeatherRepositoryImpl(
 
     override suspend fun refreshWeatherForecast(): Result<List<Weather>> {
         return try {
-            val apiKey = appPreferences.getApiKey()
             val location = appPreferences.getDefaultLocation()
             
-            if (apiKey.isEmpty()) {
-                return Result.failure(Exception("API key not configured"))
-            }
-            
-            val freshData = remoteDataSource.getWeatherForecast(location, apiKey)
+            val freshData = remoteDataSource.getWeatherForecast(location)
             localDataSource.saveWeatherForecasts(freshData)
-            
-            Result.success(freshData)
+
+            // Return refreshed data from the local source
+            Result.success(localDataSource.getWeatherForecasts())
         } catch (exception: Exception) {
             Result.failure(exception)
         }

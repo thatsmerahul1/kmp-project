@@ -95,14 +95,14 @@ fun CompactWeatherSummary(
 
 private fun formatDate(date: LocalDate): String {
     return try {
-        val dayOfWeek = when (date.dayOfWeek.value) {
-            1 -> "Monday"
-            2 -> "Tuesday" 
-            3 -> "Wednesday"
-            4 -> "Thursday"
-            5 -> "Friday"
-            6 -> "Saturday"
-            7 -> "Sunday"
+        val dayOfWeek = when (date.dayOfWeek.name) {
+            "MONDAY" -> "Monday"
+            "TUESDAY" -> "Tuesday" 
+            "WEDNESDAY" -> "Wednesday"
+            "THURSDAY" -> "Thursday"
+            "FRIDAY" -> "Friday"
+            "SATURDAY" -> "Saturday"
+            "SUNDAY" -> "Sunday"
             else -> "Unknown"
         }
         dayOfWeek

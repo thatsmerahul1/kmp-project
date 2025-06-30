@@ -61,6 +61,8 @@
 -dontwarn io.netty.**
 -dontwarn com.typesafe.**
 -dontwarn org.slf4j.**
+-dontwarn java.lang.management.**
+-dontwarn io.ktor.util.debug.**
 
 # Koin
 -keep class org.koin.** { *; }

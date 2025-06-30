@@ -15,7 +15,12 @@ val repositoryModule = module {
     
     single<LocalWeatherDataSource> { LocalWeatherDataSourceImpl(get()) }
     
-    single<RemoteWeatherDataSource> { RemoteWeatherDataSourceImpl(get()) }
+    single<RemoteWeatherDataSource> { 
+        RemoteWeatherDataSourceImpl(
+            weatherApi = get(),
+            httpClient = get()
+        )
+    }
     
     single<WeatherRepository> { 
         WeatherRepositoryImpl(

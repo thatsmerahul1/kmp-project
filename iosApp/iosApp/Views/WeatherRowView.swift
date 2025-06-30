@@ -1,16 +1,17 @@
 import SwiftUI
+import shared
 
 struct WeatherRowView: View {
-    let weather: WeatherData
+    let weather: Weather
     
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(weather.dayName)
+                Text(getDayName(weather.date))
                     .font(.headline)
                     .fontWeight(.bold)
                 
-                Text(weather.date)
+                Text(formatDate(weather.date))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -18,47 +19,43 @@ struct WeatherRowView: View {
             Spacer()
             
             VStack {
-                Text(weather.emoji)
+                Text(getWeatherEmoji(weather.condition))
                     .font(.largeTitle)
                 
-                Text(weather.description)
+                Text(weather.description_)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
             }
             
             Spacer()
             
             VStack(alignment: .trailing) {
-                Text("\(weather.highTemp)°")
+                Text("\(Int(weather.temperatureHigh))°")
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("\(weather.lowTemp)°")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                
-                Text("\(weather.humidity)%")
-                    .font(.caption2)
+                Text("\(Int(weather.temperatureLow))°")
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 }
 
+// Utility functions moved to WeatherUtils.swift
+
 #Preview {
     WeatherRowView(
-        weather: WeatherData(
-            dayName: "Today",
-            date: "2024-06-30",
-            condition: "Clear",
-            emoji: "☀️",
-            highTemp: 22,
-            lowTemp: 15,
+        weather: Weather(
+            date: Kotlinx_datetimeLocalDate.companion.parse(isoString: "2024-01-15"),
+            condition: WeatherCondition.clear,
+            temperatureHigh: 22.0,
+            temperatureLow: 15.0,
             humidity: 65,
+            icon: "01d",
             description: "Clear sky"
         )
     )
-    .padding()
 }

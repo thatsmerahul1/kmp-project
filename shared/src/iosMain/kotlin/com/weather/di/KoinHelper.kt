@@ -3,11 +3,7 @@ package com.weather.di
 import org.koin.core.Koin
 import org.koin.core.context.startKoin
 
-class KoinHelper {
-    companion object {
-        val shared = KoinHelper()
-    }
-    
+object KoinHelper {
     private var _koin: Koin? = null
     
     val koin: Koin
@@ -20,5 +16,9 @@ class KoinHelper {
             }
             _koin = koinApp.koin
         }
+    }
+    
+    inline fun <reified T> get(): T {
+        return koin.get()
     }
 }

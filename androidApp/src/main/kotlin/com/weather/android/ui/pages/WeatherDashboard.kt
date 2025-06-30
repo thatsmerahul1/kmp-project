@@ -23,6 +23,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun WeatherDashboard(
     modifier: Modifier = Modifier,
+    onWeatherClick: ((Weather) -> Unit)? = null,
     viewModel: WeatherViewModelBridge = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -47,9 +48,7 @@ fun WeatherDashboard(
                 onRefresh = { viewModel.onEvent(WeatherUiEvent.RefreshWeather) },
                 isRefreshing = uiState.isRefreshing,
                 isLoading = uiState.isLoading,
-                onWeatherClick = { weather ->
-                    // TODO: Navigate to weather detail
-                },
+                onWeatherClick = onWeatherClick,
                 topBarActions = {
                     AtomicIconButton(
                         icon = Icons.Default.Refresh,

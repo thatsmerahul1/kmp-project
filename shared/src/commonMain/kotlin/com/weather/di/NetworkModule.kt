@@ -9,9 +9,6 @@ val networkModule = module {
     single { HttpClientFactory.create() }
     
     single<WeatherApi> { 
-        WeatherApiImpl(
-            httpClient = get(),
-            baseUrl = "https://api.openweathermap.org/data/2.5"
-        )
+        WeatherApiImpl(httpClient = get())
     }
 }

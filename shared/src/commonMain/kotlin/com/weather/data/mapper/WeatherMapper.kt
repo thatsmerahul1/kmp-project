@@ -4,28 +4,21 @@ import com.weather.data.remote.dto.WeatherItemDto
 import com.weather.database.WeatherForecast
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 
 object WeatherMapper {
 
     fun WeatherItemDto.toDomain(): Weather {
-        val date = Instant.fromEpochSeconds(timestamp)
-            .toLocalDateTime(TimeZone.currentSystemDefault())
-            .date
-        
-        val weatherInfo = weather.firstOrNull()
+        val parsedDate = LocalDate.parse(date)
         
         return Weather(
-            date = date,
-            condition = WeatherCondition.fromString(weatherInfo?.main ?: ""),
-            temperatureHigh = main.temperatureMax - 273.15, // Convert from Kelvin to Celsius
-            temperatureLow = main.temperatureMin - 273.15,
-            humidity = main.humidity,
-            icon = weatherInfo?.icon ?: "",
-            description = weatherInfo?.description ?: ""
+            date = parsedDate,
+            condition = WeatherCondition.fromWeatherCode(weatherCode),
+            temperatureHigh = temperatureMax,
+            temperatureLow = temperatureMin,
+            humidity = humidity,
+            icon = getIconFromWeatherCode(weatherCode),
+            description = getDescriptionFromWeatherCode(weatherCode)
         )
     }
 
@@ -53,5 +46,54 @@ object WeatherMapper {
             icon = icon,
             description = description
         )
+    }
+    
+    private fun getIconFromWeatherCode(code: Int): String {
+        return when (code) {
+            0 -> "01d" // Clear sky
+            1, 2, 3 -> "02d" // Partly cloudy
+            45, 48 -> "50d" // Fog
+            51, 53, 55, 56, 57 -> "09d" // Drizzle
+            61, 63, 65, 66, 67 -> "10d" // Rain
+            71, 73, 75, 77 -> "13d" // Snow
+            80, 81, 82 -> "09d" // Showers
+            85, 86 -> "13d" // Snow showers
+            95, 96, 99 -> "11d" // Thunderstorm
+            else -> "01d" // Default to clear
+        }
+    }
+    
+    private fun getDescriptionFromWeatherCode(code: Int): String {
+        return when (code) {
+            0 -> "Clear sky"
+            1 -> "Mainly clear"
+            2 -> "Partly cloudy"
+            3 -> "Overcast"
+            45 -> "Fog"
+            48 -> "Depositing rime fog"
+            51 -> "Light drizzle"
+            53 -> "Moderate drizzle"
+            55 -> "Dense drizzle"
+            56 -> "Light freezing drizzle"
+            57 -> "Dense freezing drizzle"
+            61 -> "Slight rain"
+            63 -> "Moderate rain"
+            65 -> "Heavy rain"
+            66 -> "Light freezing rain"
+            67 -> "Heavy freezing rain"
+            71 -> "Slight snow fall"
+            73 -> "Moderate snow fall"
+            75 -> "Heavy snow fall"
+            77 -> "Snow grains"
+            80 -> "Slight rain showers"
+            81 -> "Moderate rain showers"
+            82 -> "Violent rain showers"
+            85 -> "Slight snow showers"
+            86 -> "Heavy snow showers"
+            95 -> "Thunderstorm"
+            96 -> "Thunderstorm with slight hail"
+            99 -> "Thunderstorm with heavy hail"
+            else -> "Unknown"
+        }
     }
 }

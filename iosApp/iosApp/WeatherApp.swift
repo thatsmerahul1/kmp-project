@@ -6,12 +6,15 @@ struct WeatherApp: App {
     
     init() {
         // Initialize Koin for dependency injection
-        KoinHelper.shared.initKoin()
+        KoinHelper.shared.doInitKoin()
     }
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationView {
+                WeatherListView()
+                    .navigationTitle("Weather Forecast")
+            }
         }
     }
 }
