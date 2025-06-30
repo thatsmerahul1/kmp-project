@@ -24,11 +24,13 @@ class LocalWeatherDataSourceImpl(
     override suspend fun saveWeatherForecasts(forecasts: List<Weather>) {
         val currentTime = Clock.System.now().toEpochMilliseconds()
         val entities = forecasts.map { it.toEntity(currentTime) }
-        weatherDao.insertWeatherForecasts(entities)
+        // Use a single transaction to clear and insert atomically
+        weatherDao.replaceAllWeatherForecasts(entities)
     }
 
     override suspend fun getWeatherForecasts(): List<Weather> {
-        return weatherDao.getAllWeatherForecasts().map { it.toDomain() }
+        val entities = weatherDao.getAllWeatherForecasts()
+        return entities.map { it.toDomain() }
     }
 
     override fun getWeatherForecastsFlow(): Flow<List<Weather>> {

@@ -98,9 +98,6 @@ struct WeatherListView: View {
                 }
             }
             .navigationTitle("Weather Forecast")
-            .onAppear {
-                viewModelWrapper.loadWeather()
-            }
             .sheet(item: Binding<Weather?>(
                 get: { selectedWeather },
                 set: { selectedWeather = $0 }

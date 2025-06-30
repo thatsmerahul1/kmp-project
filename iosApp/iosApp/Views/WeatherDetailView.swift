@@ -7,6 +7,17 @@ struct WeatherDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Location and date header
+                VStack(spacing: 4) {
+                    Text("Bengaluru, India")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text(formatDetailDate(weather.date))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top)
+                
                 // Main weather card
                 VStack(spacing: 16) {
                     Text(getWeatherEmoji(weather.condition))
@@ -23,7 +34,7 @@ struct WeatherDetailView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Text("\(Int(weather.temperatureHigh))°")
-                                .font(.title)
+                                .font(.largeTitle)
                                 .fontWeight(.bold)
                         }
                         
@@ -32,7 +43,7 @@ struct WeatherDetailView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             Text("\(Int(weather.temperatureLow))°")
-                                .font(.title)
+                                .font(.largeTitle)
                                 .fontWeight(.bold)
                         }
                     }
@@ -41,36 +52,48 @@ struct WeatherDetailView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(15)
                 
-                // Additional details
-                VStack(spacing: 16) {
-                    HStack {
-                        Label("Humidity", systemImage: "humidity")
-                            .foregroundColor(.blue)
-                        Spacer()
+                // Additional details cards
+                HStack(spacing: 16) {
+                    // Humidity card
+                    VStack(spacing: 8) {
+                        Text("💧")
+                            .font(.title)
+                        Text("Humidity")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                         Text("\(weather.humidity)%")
-                            .fontWeight(.medium)
+                            .font(.title2)
+                            .fontWeight(.bold)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                     
-                    Divider()
-                    
-                    HStack {
-                        Label("Date", systemImage: "calendar")
-                            .foregroundColor(.green)
-                        Spacer()
-                        Text(formatDetailDate(weather.date))
-                            .fontWeight(.medium)
+                    // Condition card
+                    VStack(spacing: 8) {
+                        Text(getWeatherEmoji(weather.condition))
+                            .font(.title)
+                        Text("Condition")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(weather.condition.name.capitalized)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(15)
                 
                 Spacer()
             }
             .padding()
         }
-        .navigationTitle(getDayName(weather.date))
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("Weather Details")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -5,12 +5,14 @@ import app.cash.sqldelight.coroutines.mapToList
 import com.weather.database.WeatherDatabase
 import com.weather.database.WeatherForecast
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 interface WeatherDao {
     suspend fun insertWeatherForecast(forecast: WeatherForecast)
     suspend fun insertWeatherForecasts(forecasts: List<WeatherForecast>)
+    suspend fun replaceAllWeatherForecasts(forecasts: List<WeatherForecast>)
     suspend fun getAllWeatherForecasts(): List<WeatherForecast>
     fun getAllWeatherForecastsFlow(): Flow<List<WeatherForecast>>
     suspend fun getWeatherForecastsByDateRange(startDate: Long, endDate: Long): List<WeatherForecast>
@@ -43,9 +45,9 @@ class WeatherDaoImpl(
     }
 
     override suspend fun insertWeatherForecasts(forecasts: List<WeatherForecast>) {
-        withContext(Dispatchers.Default) {
+        withContext(Dispatchers.IO) {
             database.transaction {
-                forecasts.forEach { forecast ->
+                forecasts.forEachIndexed { index, forecast ->
                     queries.insertOrReplace(
                         id = forecast.id,
                         date = forecast.date,
@@ -102,6 +104,30 @@ class WeatherDaoImpl(
     override suspend fun getCount(): Long {
         return withContext(Dispatchers.Default) {
             queries.countRecords().executeAsOne()
+        }
+    }
+
+    override suspend fun replaceAllWeatherForecasts(forecasts: List<WeatherForecast>) {
+        withContext(Dispatchers.IO) {
+            database.transaction {
+                // Clear all existing data first
+                queries.deleteAll()
+                
+                // Insert all new forecasts
+                forecasts.forEachIndexed { index, forecast ->
+                    queries.insertOrReplace(
+                        id = forecast.id,
+                        date = forecast.date,
+                        condition = forecast.condition,
+                        temperature_high = forecast.temperature_high,
+                        temperature_low = forecast.temperature_low,
+                        humidity = forecast.humidity,
+                        icon = forecast.icon,
+                        description = forecast.description,
+                        cached_at = forecast.cached_at
+                    )
+                }
+            }
         }
     }
 }

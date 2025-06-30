@@ -23,9 +23,11 @@ object WeatherMapper {
     }
 
     fun Weather.toEntity(cachedAt: Long): WeatherForecast {
+        val epochDays = date.toEpochDays().toLong()
+        
         return WeatherForecast(
-            id = 0L, // Will be auto-generated
-            date = date.toEpochDays().toLong(),
+            id = epochDays,
+            date = epochDays,
             condition = condition.name,
             temperature_high = temperatureHigh,
             temperature_low = temperatureLow,
