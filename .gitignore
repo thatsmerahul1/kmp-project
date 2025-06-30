@@ -67,6 +67,8 @@ out/
 # VSCode
 .vscode/
 
+ExportOptions.plist
+
 # Node.js (if using for any tooling)
 node_modules/
 npm-debug.log*
