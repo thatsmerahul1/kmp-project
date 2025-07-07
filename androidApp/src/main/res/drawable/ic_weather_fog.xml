@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Fog lines -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,15h18v1H3z"/>
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,17h15v1H3z"/>
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,19h18v1H3z"/>
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,21h12v1H3z"/>
+    
+    <!-- Light cloud base -->
+    <path
+        android:fillColor="@android:color/white"
+        android:fillAlpha="0.7"
+        android:pathData="M19.35,8.04C18.67,4.59 15.64,2 12,2c-2.56,0 -4.73,1.42 -5.88,3.5 -0.66,-0.17 -1.35,-0.27 -2.07,-0.27C2.18,5.23 0.5,6.91 0.5,9.5c0,2.54 2.01,4.61 4.53,4.74C5.13,14.1 5.25,14 5.38,14h13.12c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96z"/>
+</vector>
