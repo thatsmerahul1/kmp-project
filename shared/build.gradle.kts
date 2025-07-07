@@ -16,6 +16,12 @@ kotlin {
         }
     }
     
+    jvm {
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+    
     iosX64()
     iosArm64()
     iosSimulatorArm64()
@@ -53,8 +59,19 @@ kotlin {
             implementation(libs.turbine)
         }
         
+        jvmTest.dependencies {
+            implementation("io.mockk:mockk:1.13.8")
+            implementation("org.junit.jupiter:junit-jupiter:5.10.1")
+            implementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
+        }
+        
         // Android-specific test dependencies would go here
         // Note: Android test source sets need to be properly configured for KMP
+        
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.sqldelight.sqlite.driver)
+        }
         
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
