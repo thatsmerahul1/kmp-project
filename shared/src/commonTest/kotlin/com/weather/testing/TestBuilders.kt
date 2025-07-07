@@ -2,6 +2,7 @@ package com.weather.testing
 
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
+import com.weather.domain.common.DomainException
 import com.weather.security.*
 import com.weather.monitoring.*
 import com.weather.features.*
@@ -368,7 +369,12 @@ class FeatureConfigurationBuilder {
  */
 class ResultBuilder<T> {
     fun success(data: T) = com.weather.domain.common.Result.Success(data)
-    fun error(exception: Exception) = com.weather.domain.common.Result.Error(exception.toDomainException())
+    fun error(exception: Exception) = com.weather.domain.common.Result.Error(
+        when (exception) {
+            is DomainException -> exception
+            else -> DomainException.Unknown(exception.message ?: "Unknown error occurred")
+        }
+    )
     fun loading() = com.weather.domain.common.Result.Loading
 }
 

@@ -1,8 +1,8 @@
 package com.weather.testing
 
-import com.weather.domain.common.Result
 import com.weather.domain.repository.WeatherRepository
-import com.weather.domain.model.*
+import com.weather.domain.model.Weather
+import com.weather.domain.model.WeatherCondition
 import com.weather.security.*
 import com.weather.monitoring.*
 import com.weather.features.*
@@ -21,62 +21,39 @@ import kotlinx.datetime.Clock
  * Weather domain mocks
  */
 class FakeWeatherRepository(
-    private var weatherResult: Result<WeatherInfo> = aResult<WeatherInfo>().success(aWeatherInfo().build()),
-    private var locationsResult: Result<List<Location>> = aResult<List<Location>>().success(listOf(aLocation().build())),
-    private var forecastResult: Result<List<WeatherInfo>> = aResult<List<WeatherInfo>>().success(listOf(aWeatherInfo().build()))
+    private var forecastResult: kotlin.Result<List<Weather>> = kotlin.Result.success(listOf(aWeather().build()))
 ) : WeatherRepository {
     
-    var getWeatherCallCount = 0
-        private set
-    var searchLocationsCallCount = 0
-        private set
     var getForecastCallCount = 0
         private set
-    
-    var lastLocationQuery: String? = null
+    var refreshCallCount = 0
         private set
-    var lastCoordinates: Pair<Double, Double>? = null
+    var clearCacheCallCount = 0
         private set
     
-    override suspend fun getWeatherForLocation(latitude: Double, longitude: Double): Result<WeatherInfo> {
-        getWeatherCallCount++
-        lastCoordinates = Pair(latitude, longitude)
-        return weatherResult
-    }
-    
-    override suspend fun searchLocations(query: String): Result<List<Location>> {
-        searchLocationsCallCount++
-        lastLocationQuery = query
-        return locationsResult
-    }
-    
-    override suspend fun getForecast(latitude: Double, longitude: Double, days: Int): Result<List<WeatherInfo>> {
+    override fun getWeatherForecast(): Flow<kotlin.Result<List<Weather>>> {
         getForecastCallCount++
-        lastCoordinates = Pair(latitude, longitude)
+        return flowOf(forecastResult)
+    }
+    
+    override suspend fun refreshWeatherForecast(): kotlin.Result<List<Weather>> {
+        refreshCallCount++
         return forecastResult
     }
     
-    override suspend fun refreshWeatherData(): Result<Unit> = Result.Success(Unit)
+    override suspend fun clearCache() {
+        clearCacheCallCount++
+    }
     
     // Test helpers
-    fun setWeatherResult(result: Result<WeatherInfo>) {
-        weatherResult = result
-    }
-    
-    fun setLocationsResult(result: Result<List<Location>>) {
-        locationsResult = result
-    }
-    
-    fun setForecastResult(result: Result<List<WeatherInfo>>) {
+    fun setForecastResult(result: kotlin.Result<List<Weather>>) {
         forecastResult = result
     }
     
     fun reset() {
-        getWeatherCallCount = 0
-        searchLocationsCallCount = 0
         getForecastCallCount = 0
-        lastLocationQuery = null
-        lastCoordinates = null
+        refreshCallCount = 0
+        clearCacheCallCount = 0
     }
 }
 
@@ -89,7 +66,7 @@ class FakeEncryptionProvider(
     private var hashResult: String = "test_hash",
     private var saltResult: String = "test_salt",
     private var keyResult: String = "test_key",
-    private var validationResult: Result<Boolean> = Result.Success(true)
+    private var validationResult: com.weather.domain.common.Result<Boolean> = com.weather.domain.common.Result.Success(true)
 ) : EncryptionProvider {
     
     var encryptCallCount = 0
@@ -140,7 +117,7 @@ class FakeEncryptionProvider(
         return keyResult
     }
     
-    override suspend fun validateSecurityContext(): Result<Boolean> {
+    override suspend fun validateSecurityContext(): com.weather.domain.common.Result<Boolean> {
         validateCallCount++
         return validationResult
     }
@@ -154,7 +131,7 @@ class FakeEncryptionProvider(
         decryptResult = result
     }
     
-    fun setValidationResult(result: Result<Boolean>) {
+    fun setValidationResult(result: com.weather.domain.common.Result<Boolean>) {
         validationResult = result
     }
     
@@ -176,7 +153,7 @@ class FakeSecureStorage(
     private var storeResult: Boolean = true,
     private var deleteResult: Boolean = true,
     private var clearResult: Boolean = true,
-    private var validationResult: Result<Boolean> = Result.Success(true)
+    private var validationResult: com.weather.domain.common.Result<Boolean> = com.weather.domain.common.Result.Success(true)
 ) : SecureStorage {
     
     var storeCallCount = 0
@@ -232,7 +209,7 @@ class FakeSecureStorage(
         return storage.containsKey(key)
     }
     
-    override suspend fun validateStorageIntegrity(): Result<Boolean> {
+    override suspend fun validateStorageIntegrity(): com.weather.domain.common.Result<Boolean> {
         validateCallCount++
         return validationResult
     }
@@ -250,7 +227,7 @@ class FakeSecureStorage(
         clearResult = result
     }
     
-    fun setValidationResult(result: Result<Boolean>) {
+    fun setValidationResult(result: com.weather.domain.common.Result<Boolean>) {
         validationResult = result
     }
     
@@ -271,11 +248,11 @@ class FakeSecureStorage(
  * Monitoring domain mocks
  */
 class FakeTelemetryProvider(
-    private var recordMetricResult: Result<Unit> = Result.Success(Unit),
-    private var startSpanResult: Result<SpanContext> = Result.Success(SpanContext("trace", "span", Clock.System.now())),
-    private var endSpanResult: Result<Unit> = Result.Success(Unit),
-    private var recordEventResult: Result<Unit> = Result.Success(Unit),
-    private var flushResult: Result<Unit> = Result.Success(Unit)
+    private var recordMetricResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var startSpanResult: com.weather.domain.common.Result<SpanContext> = com.weather.domain.common.Result.Success(SpanContext("trace", "span", Clock.System.now())),
+    private var endSpanResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var recordEventResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var flushResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit)
 ) : TelemetryProvider {
     
     var recordMetricCallCount = 0
@@ -293,24 +270,24 @@ class FakeTelemetryProvider(
     private val recordedSpans = mutableListOf<TelemetrySpan>()
     private val recordedEvents = mutableListOf<TelemetryEvent>()
     
-    override suspend fun recordMetric(metric: TelemetryMetric): Result<Unit> {
+    override suspend fun recordMetric(metric: TelemetryMetric): com.weather.domain.common.Result<Unit> {
         recordMetricCallCount++
         recordedMetrics.add(metric)
         return recordMetricResult
     }
     
-    override suspend fun startSpan(span: TelemetrySpan): Result<SpanContext> {
+    override suspend fun startSpan(span: TelemetrySpan): com.weather.domain.common.Result<SpanContext> {
         startSpanCallCount++
         recordedSpans.add(span)
         return startSpanResult
     }
     
-    override suspend fun endSpan(context: SpanContext, result: SpanResult): Result<Unit> {
+    override suspend fun endSpan(context: SpanContext, result: SpanResult): com.weather.domain.common.Result<Unit> {
         endSpanCallCount++
         return endSpanResult
     }
     
-    override suspend fun recordEvent(event: TelemetryEvent): Result<Unit> {
+    override suspend fun recordEvent(event: TelemetryEvent): com.weather.domain.common.Result<Unit> {
         recordEventCallCount++
         recordedEvents.add(event)
         return recordEventResult
@@ -320,7 +297,7 @@ class FakeTelemetryProvider(
     
     override fun getSpansFlow(): Flow<TelemetrySpan> = flowOf()
     
-    override suspend fun flush(): Result<Unit> {
+    override suspend fun flush(): com.weather.domain.common.Result<Unit> {
         flushCallCount++
         return flushResult
     }
@@ -330,11 +307,11 @@ class FakeTelemetryProvider(
     fun getRecordedSpans(): List<TelemetrySpan> = recordedSpans.toList()
     fun getRecordedEvents(): List<TelemetryEvent> = recordedEvents.toList()
     
-    fun setRecordMetricResult(result: Result<Unit>) {
+    fun setRecordMetricResult(result: com.weather.domain.common.Result<Unit>) {
         recordMetricResult = result
     }
     
-    fun setStartSpanResult(result: Result<SpanContext>) {
+    fun setStartSpanResult(result: com.weather.domain.common.Result<SpanContext>) {
         startSpanResult = result
     }
     
@@ -351,10 +328,10 @@ class FakeTelemetryProvider(
 }
 
 class FakeMetricsCollector(
-    private var startResult: Result<Unit> = Result.Success(Unit),
-    private var stopResult: Result<Unit> = Result.Success(Unit),
-    private var snapshotResult: Result<MetricsSnapshot> = Result.Success(createTestSnapshot()),
-    private var recordCustomResult: Result<Unit> = Result.Success(Unit)
+    private var startResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var stopResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var snapshotResult: com.weather.domain.common.Result<MetricsSnapshot> = com.weather.domain.common.Result.Success(createTestSnapshot()),
+    private var recordCustomResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit)
 ) : MetricsCollector {
     
     var startCallCount = 0
@@ -368,24 +345,24 @@ class FakeMetricsCollector(
     
     private val customMetrics = mutableMapOf<String, Pair<Double, Map<String, String>>>()
     
-    override suspend fun startCollection(): Result<Unit> {
+    override suspend fun startCollection(): com.weather.domain.common.Result<Unit> {
         startCallCount++
         return startResult
     }
     
-    override suspend fun stopCollection(): Result<Unit> {
+    override suspend fun stopCollection(): com.weather.domain.common.Result<Unit> {
         stopCallCount++
         return stopResult
     }
     
-    override suspend fun collectSnapshot(): Result<MetricsSnapshot> {
+    override suspend fun collectSnapshot(): com.weather.domain.common.Result<MetricsSnapshot> {
         snapshotCallCount++
         return snapshotResult
     }
     
     override fun getMetricsStream(): Flow<MetricsSnapshot> = flowOf()
     
-    override suspend fun recordCustomMetric(name: String, value: Double, tags: Map<String, String>): Result<Unit> {
+    override suspend fun recordCustomMetric(name: String, value: Double, tags: Map<String, String>): com.weather.domain.common.Result<Unit> {
         recordCustomCallCount++
         customMetrics[name] = Pair(value, tags)
         return recordCustomResult
@@ -394,7 +371,7 @@ class FakeMetricsCollector(
     // Test helpers
     fun getCustomMetrics(): Map<String, Pair<Double, Map<String, String>>> = customMetrics.toMap()
     
-    fun setSnapshotResult(result: Result<MetricsSnapshot>) {
+    fun setSnapshotResult(result: com.weather.domain.common.Result<MetricsSnapshot>) {
         snapshotResult = result
     }
     
@@ -491,12 +468,12 @@ class FakeMetricsCollector(
  */
 class FakeFeatureToggleManager(
     private val features: MutableMap<String, Boolean> = mutableMapOf(),
-    private var initializeResult: Result<Unit> = Result.Success(Unit),
-    private var enableResult: Result<Unit> = Result.Success(Unit),
-    private var disableResult: Result<Unit> = Result.Success(Unit),
-    private var rolloutResult: Result<Unit> = Result.Success(Unit),
-    private var refreshResult: Result<Unit> = Result.Success(Unit),
-    private var recordUsageResult: Result<Unit> = Result.Success(Unit)
+    private var initializeResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var enableResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var disableResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var rolloutResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var refreshResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit),
+    private var recordUsageResult: com.weather.domain.common.Result<Unit> = com.weather.domain.common.Result.Success(Unit)
 ) : FeatureToggleManager {
     
     var initializeCallCount = 0
@@ -515,7 +492,7 @@ class FakeFeatureToggleManager(
     private val featureConfigurations = mutableMapOf<String, FeatureConfiguration>()
     private val usageEvents = mutableListOf<Pair<String, Map<String, String>>>()
     
-    override suspend fun initialize(): Result<Unit> {
+    override suspend fun initialize(): com.weather.domain.common.Result<Unit> {
         initializeCallCount++
         return initializeResult
     }
@@ -524,24 +501,24 @@ class FakeFeatureToggleManager(
     
     override fun isFeatureEnabled(feature: FeatureFlag): Boolean = isFeatureEnabled(feature.key)
     
-    override suspend fun enableFeature(feature: String): Result<Unit> {
+    override suspend fun enableFeature(feature: String): com.weather.domain.common.Result<Unit> {
         enableCallCount++
         features[feature] = true
         return enableResult
     }
     
-    override suspend fun disableFeature(feature: String): Result<Unit> {
+    override suspend fun disableFeature(feature: String): com.weather.domain.common.Result<Unit> {
         disableCallCount++
         features[feature] = false
         return disableResult
     }
     
-    override suspend fun setFeatureRolloutPercentage(feature: String, percentage: Int): Result<Unit> {
+    override suspend fun setFeatureRolloutPercentage(feature: String, percentage: Int): com.weather.domain.common.Result<Unit> {
         rolloutCallCount++
         return rolloutResult
     }
     
-    override suspend fun refreshConfiguration(): Result<Unit> {
+    override suspend fun refreshConfiguration(): com.weather.domain.common.Result<Unit> {
         refreshCallCount++
         return refreshResult
     }
@@ -550,7 +527,7 @@ class FakeFeatureToggleManager(
     
     override fun getAllFeatures(): Map<String, FeatureConfiguration> = featureConfigurations.toMap()
     
-    override suspend fun recordFeatureUsage(feature: String, context: Map<String, String>): Result<Unit> {
+    override suspend fun recordFeatureUsage(feature: String, context: Map<String, String>): com.weather.domain.common.Result<Unit> {
         recordUsageCallCount++
         usageEvents.add(Pair(feature, context))
         return recordUsageResult

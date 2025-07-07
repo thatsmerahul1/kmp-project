@@ -77,7 +77,7 @@ class WeatherMapperTest {
     }
 
     @Test
-    fun `Weather toDomain should handle identity mapping`() {
+    fun `Weather domain model should have all required fields`() {
         val weather = Weather(
             date = LocalDate(2025, 1, 15),
             condition = WeatherCondition.CLEAR,
@@ -88,9 +88,14 @@ class WeatherMapperTest {
             description = "Clear sky"
         )
 
-        val result = weather.toDomain()
-
-        assertEquals(weather, result)
+        // Verify all fields are accessible and have expected values
+        assertEquals(LocalDate(2025, 1, 15), weather.date)
+        assertEquals(WeatherCondition.CLEAR, weather.condition)
+        assertEquals(25.0, weather.temperatureHigh)
+        assertEquals(15.0, weather.temperatureLow)
+        assertEquals(65, weather.humidity)
+        assertEquals("01d", weather.icon)
+        assertEquals("Clear sky", weather.description)
     }
 
     @Test

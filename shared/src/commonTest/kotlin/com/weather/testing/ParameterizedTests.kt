@@ -76,7 +76,7 @@ class ParameterizedTestRunner {
      * Run property-based tests
      */
     inline fun <T> runPropertyTests(
-        generator: () -> T,
+        crossinline generator: () -> T,
         config: PropertyTestConfig = PropertyTestConfig(),
         crossinline predicate: suspend (T) -> Boolean
     ) = runTest {
