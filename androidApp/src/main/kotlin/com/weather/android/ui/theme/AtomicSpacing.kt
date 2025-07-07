@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 object AtomicSpacing {
     // Base spacing values
     val None = 0.dp
+    val XXS = 2.dp   // Double Extra Small - micro spacing
     val XS = 4.dp    // Extra Small - minimal spacing
     val SM = 8.dp    // Small - compact spacing
     val MD = 16.dp   // Medium - standard spacing
@@ -41,5 +42,10 @@ object AtomicSpacing {
     
     // Border and divider sizes
     val BorderWidth = 1.dp
+    val BorderWidthThin = 0.5.dp
     val DividerWidth = 1.dp
+    
+    // Weather card specific dimensions
+    val WeatherCardDateWidth = 80.dp
+    val WeatherCardIconWidth = 80.dp
 }

@@ -1,9 +1,7 @@
 package com.weather.android.ui.organisms
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,13 +10,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import com.weather.android.ui.molecules.WeatherSummary
 import com.weather.android.ui.theme.AtomicDesignSystem
 import com.weather.android.ui.theme.AtomicTheme
-import com.weather.android.util.WeatherUtils
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import kotlinx.datetime.LocalDate
@@ -43,28 +38,23 @@ fun WeatherCard(
             ),
         shape = AtomicDesignSystem.shapes.WeatherCard,
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent,
+            containerColor = AtomicDesignSystem.colors.WeatherCardBackground,
             contentColor = AtomicDesignSystem.colors.OnSurface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = AtomicDesignSystem.spacing.XS
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = AtomicDesignSystem.spacing.BorderWidthThin,
+            color = AtomicDesignSystem.colors.Outline.copy(alpha = 0.2f)
         )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = WeatherUtils.getWeatherGradient(weather.condition)
-                )
-                .clip(AtomicDesignSystem.shapes.WeatherCard)
-        ) {
-            WeatherSummary(
-                weather = weather,
-                showDate = showDate,
-                showHumidity = showHumidity,
-                modifier = Modifier.padding(AtomicDesignSystem.spacing.WeatherCardPadding)
-            )
-        }
+        WeatherSummary(
+            weather = weather,
+            showDate = showDate,
+            showHumidity = showHumidity,
+            modifier = Modifier.padding(AtomicDesignSystem.spacing.WeatherCardPadding)
+        )
     }
 }
 
@@ -85,28 +75,23 @@ fun CompactWeatherCard(
             ),
         shape = AtomicDesignSystem.shapes.WeatherCard,
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent,
+            containerColor = AtomicDesignSystem.colors.WeatherCardBackground,
             contentColor = AtomicDesignSystem.colors.OnSurface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = AtomicDesignSystem.spacing.XS / 2
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = AtomicDesignSystem.spacing.BorderWidthThin,
+            color = AtomicDesignSystem.colors.Outline.copy(alpha = 0.15f)
         )
     ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    brush = WeatherUtils.getWeatherGradient(weather.condition),
-                    alpha = 0.3f // Lighter gradient for compact cards
-                )
-                .clip(AtomicDesignSystem.shapes.WeatherCard)
-        ) {
-            WeatherSummary(
-                weather = weather,
-                showDate = false,
-                showHumidity = false,
-                modifier = Modifier.padding(AtomicDesignSystem.spacing.SM)
-            )
-        }
+        WeatherSummary(
+            weather = weather,
+            showDate = false,
+            showHumidity = false,
+            modifier = Modifier.padding(AtomicDesignSystem.spacing.SM)
+        )
     }
 }
 

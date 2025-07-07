@@ -15,6 +15,9 @@ object AtomicColors {
     val OnSurfaceVariant = Color(0xFF757575)
     val SurfaceContainer = Color(0xFFF3F3F3)
     
+    // Card specific colors - consistent off-white like iOS
+    val WeatherCardBackground = Color(0xFFFCFCFC) // Very light off-white for weather cards
+    
     // Secondary Colors
     val Secondary = Color(0xFF03DAC6)
     val SecondaryContainer = Color(0xFF4ECCA3)
