@@ -1,0 +1,204 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":timezone(America/New_York)",
+    ":semanticCommits",
+    ":enablePreCommit",
+    ":maintainLockFilesWeekly"
+  ],
+  "assignees": ["@wedev"],
+  "reviewers": ["@wedev"],
+  "labels": ["dependencies", "renovate"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "platformAutomerge": false,
+  "schedule": ["before 6am on Monday"],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/dist/**"
+  ],
+  "packageRules": [
+    {
+      "description": "Group all Android dependencies",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": [
+        "androidx.*",
+        "com.android.*",
+        "com.google.android.*"
+      ],
+      "groupName": "Android dependencies",
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": false
+    },
+    {
+      "description": "Group all Kotlin dependencies",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": [
+        "org.jetbrains.kotlin.*",
+        "org.jetbrains.kotlinx.*"
+      ],
+      "groupName": "Kotlin dependencies",
+      "schedule": ["before 6am on Monday"],
+      "automerge": false
+    },
+    {
+      "description": "Group all Compose dependencies",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": [
+        "androidx.compose.*",
+        "org.jetbrains.compose.*"
+      ],
+      "groupName": "Compose dependencies",
+      "schedule": ["before 6am on Monday"],
+      "automerge": false
+    },
+    {
+      "description": "Group all testing dependencies",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": [
+        "junit.*",
+        "org.junit.*",
+        "org.mockito.*",
+        "io.mockk.*",
+        "org.robolectric.*",
+        "androidx.test.*",
+        "com.google.truth.*"
+      ],
+      "groupName": "Testing dependencies",
+      "schedule": ["before 6am on Monday"],
+      "automerge": true,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Auto-merge patch updates for stable packages",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+      "minimumReleaseAge": "3 days",
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Weekly updates for major dependencies",
+      "matchUpdateTypes": ["major"],
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "labels": ["major-update", "needs-review"]
+    },
+    {
+      "description": "Pin GitHub Actions to commit SHA",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true,
+      "automerge": false
+    },
+    {
+      "description": "Group all GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "schedule": ["before 6am on Monday"],
+      "automerge": false
+    },
+    {
+      "description": "Security updates",
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["patch"],
+      "vulnerability": "high",
+      "schedule": ["at any time"],
+      "automerge": true,
+      "prPriority": 10,
+      "labels": ["security", "urgent"]
+    },
+    {
+      "description": "Gradle wrapper updates",
+      "matchManagers": ["gradle-wrapper"],
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "labels": ["gradle-wrapper"]
+    },
+    {
+      "description": "KMP specific dependencies",
+      "matchManagers": ["gradle"],
+      "matchPackagePatterns": [
+        "co.touchlab.*",
+        "com.squareup.sqldelight.*",
+        "io.insert-koin.*",
+        "io.ktor.*",
+        "org.jetbrains.kotlinx.datetime.*",
+        "org.jetbrains.kotlinx.serialization.*",
+        "org.jetbrains.kotlinx.coroutines.*"
+      ],
+      "groupName": "KMP dependencies",
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "prPriority": 10,
+    "labels": ["security", "vulnerability"]
+  },
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Updates Dashboard",
+  "dependencyDashboardHeader": "This issue lists Renovate updates and detected dependencies. Read the [Dependency Dashboard](https://docs.renovatebot.com/key-concepts/dashboard/) docs to learn more.",
+  "dependencyDashboardLabels": ["renovate", "dependencies"],
+  "dependencyDashboardAutoclose": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on Monday"],
+    "automerge": true,
+    "platformAutomerge": true
+  },
+  "regexManagers": [
+    {
+      "description": "Update AGP version in build.gradle.kts",
+      "fileMatch": ["(^|/)build\\.gradle\\.kts$"],
+      "matchStrings": [
+        "agp\\s*=\\s*\"(?<currentValue>.*?)\""
+      ],
+      "depNameTemplate": "com.android.tools.build:gradle",
+      "datasourceTemplate": "maven"
+    },
+    {
+      "description": "Update Kotlin version in gradle/libs.versions.toml",
+      "fileMatch": ["gradle/libs\\.versions\\.toml$"],
+      "matchStrings": [
+        "kotlin\\s*=\\s*\"(?<currentValue>.*?)\""
+      ],
+      "depNameTemplate": "org.jetbrains.kotlin:kotlin-gradle-plugin",
+      "datasourceTemplate": "maven"
+    },
+    {
+      "description": "Update versions in version catalogs",
+      "fileMatch": ["gradle/libs\\.versions\\.toml$"],
+      "matchStrings": [
+        "(?<depName>[a-zA-Z0-9\\-_]+)\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "maven"
+    }
+  ],
+  "gradle": {
+    "timeout": 300,
+    "ignoreDeps": []
+  },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gradleWrapperUpdate"
+  ],
+  "prBodyTemplate": "{{{header}}}{{{table}}}{{{notes}}}{{{changelogs}}}{{{configDescription}}}{{{controls}}}{{{footer}}}",
+  "prTitle": "chore(deps): {{{commitMessageAction}}} {{{commitMessageTopic}}}",
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{newVersion}}",
+  "branchPrefix": "renovate/",
+  "branchTopic": "{{{depNameSanitized}}}-{{{newMajor}}}{{#if separateMinorPatch}}{{#if isPatch}}.{{{newMinor}}}{{/if}}{{/if}}.x{{#if isLockfileUpdate}}-lockfile{{/if}}",
+  "onboarding": false,
+  "requireConfig": "optional",
+  "forkProcessing": "enabled",
+  "prCreation": "not-pending",
+  "stabilityDays": 3,
+  "internalChecksFilter": "strict"
+}

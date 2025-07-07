@@ -1,0 +1,508 @@
+name: Quality Dashboard Generator
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 4 * * 1' # Weekly quality report on Mondays at 4 AM
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'zulu'
+
+jobs:
+  generate-quality-metrics:
+    runs-on: ubuntu-latest
+    
+    outputs:
+      coverage-percentage: ${{ steps.metrics.outputs.coverage-percentage }}
+      complexity-score: ${{ steps.metrics.outputs.complexity-score }}
+      test-count: ${{ steps.metrics.outputs.test-count }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: ${{ env.JAVA_DISTRIBUTION }}
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+      
+    - name: Install analysis tools
+      run: |
+        # Install cloc for code counting
+        sudo apt-get update
+        sudo apt-get install -y cloc jq bc
+        
+    - name: Run tests and generate coverage
+      run: |
+        echo "🧪 Running comprehensive test suite..."
+        ./gradlew testAll koverHtmlReport koverXmlReport --continue
+        
+    - name: Analyze code complexity
+      run: |
+        echo "🔍 Analyzing code complexity..."
+        
+        # Create complexity analysis script
+        cat > analyze-complexity.py << 'EOF'
+        import os
+        import re
+        import json
+        from pathlib import Path
+        
+        def analyze_kotlin_file(file_path):
+            """Analyze a Kotlin file for complexity metrics"""
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Count cyclomatic complexity indicators
+            complexity_indicators = [
+                r'\bif\b', r'\belse\b', r'\bwhile\b', r'\bfor\b',
+                r'\bwhen\b', r'\btry\b', r'\bcatch\b', r'\band\b', r'\bor\b',
+                r'\?\?', r'\?\.', r'\?:'
+            ]
+            
+            complexity = 1  # Base complexity
+            for pattern in complexity_indicators:
+                complexity += len(re.findall(pattern, content))
+            
+            # Count lines of code (excluding empty and comment lines)
+            lines = content.split('\n')
+            loc = len([line for line in lines if line.strip() and not line.strip().startswith('//')])
+            
+            # Count functions
+            functions = len(re.findall(r'\bfun\s+\w+', content))
+            
+            return {
+                'complexity': complexity,
+                'lines_of_code': loc,
+                'functions': functions,
+                'complexity_per_function': complexity / max(functions, 1)
+            }
+        
+        def analyze_project():
+            """Analyze the entire project"""
+            kotlin_files = []
+            for root, dirs, files in os.walk('.'):
+                # Skip build and .git directories
+                dirs[:] = [d for d in dirs if d not in ['build', '.git', 'node_modules']]
+                
+                for file in files:
+                    if file.endswith('.kt'):
+                        kotlin_files.append(os.path.join(root, file))
+            
+            total_complexity = 0
+            total_loc = 0
+            total_functions = 0
+            file_count = 0
+            
+            for file_path in kotlin_files:
+                try:
+                    metrics = analyze_kotlin_file(file_path)
+                    total_complexity += metrics['complexity']
+                    total_loc += metrics['lines_of_code']
+                    total_functions += metrics['functions']
+                    file_count += 1
+                except Exception as e:
+                    print(f"Error analyzing {file_path}: {e}")
+            
+            avg_complexity = total_complexity / max(file_count, 1)
+            avg_complexity_per_function = total_complexity / max(total_functions, 1)
+            
+            return {
+                'total_files': file_count,
+                'total_complexity': total_complexity,
+                'total_loc': total_loc,
+                'total_functions': total_functions,
+                'average_complexity_per_file': round(avg_complexity, 2),
+                'average_complexity_per_function': round(avg_complexity_per_function, 2)
+            }
+        
+        if __name__ == '__main__':
+            result = analyze_project()
+            print(json.dumps(result, indent=2))
+        EOF
+        
+        python3 analyze-complexity.py > complexity-report.json
+        
+    - name: Count lines of code
+      run: |
+        echo "📊 Counting lines of code..."
+        
+        # Count Kotlin files
+        cloc --json shared/src androidApp/src --include-lang=Kotlin > cloc-report.json || true
+        
+        # Extract metrics
+        if [ -f "cloc-report.json" ]; then
+          TOTAL_LINES=$(cat cloc-report.json | jq -r '.SUM.code // 0')
+          TOTAL_FILES=$(cat cloc-report.json | jq -r '.SUM.nFiles // 0')
+          echo "total_lines=$TOTAL_LINES" >> $GITHUB_ENV
+          echo "total_files=$TOTAL_FILES" >> $GITHUB_ENV
+        else
+          echo "total_lines=0" >> $GITHUB_ENV
+          echo "total_files=0" >> $GITHUB_ENV
+        fi
+        
+    - name: Extract metrics
+      id: metrics
+      run: |
+        echo "📈 Extracting quality metrics..."
+        
+        # Coverage metrics
+        COVERAGE_PERCENTAGE="0"
+        if [ -f "build/reports/kover/xml/report.xml" ]; then
+          COVERAGE_DATA=$(grep -o '<counter type="LINE".*covered="[0-9]*".*missed="[0-9]*"' build/reports/kover/xml/report.xml | head -1)
+          if [ ! -z "$COVERAGE_DATA" ]; then
+            COVERED=$(echo $COVERAGE_DATA | grep -o 'covered="[0-9]*"' | cut -d'"' -f2)
+            MISSED=$(echo $COVERAGE_DATA | grep -o 'missed="[0-9]*"' | cut -d'"' -f2)
+            TOTAL=$((COVERED + MISSED))
+            if [ $TOTAL -gt 0 ]; then
+              COVERAGE_PERCENTAGE=$(echo "scale=2; $COVERED * 100 / $TOTAL" | bc)
+            fi
+          fi
+        fi
+        
+        # Complexity metrics
+        COMPLEXITY_SCORE="0"
+        if [ -f "complexity-report.json" ]; then
+          COMPLEXITY_SCORE=$(cat complexity-report.json | jq -r '.average_complexity_per_function // 0')
+        fi
+        
+        # Test count
+        TEST_COUNT="0"
+        if [ -d "shared/build/reports/tests" ]; then
+          TEST_COUNT=$(find shared/build/reports/tests -name "*.xml" -exec grep -o 'tests="[0-9]*"' {} \; | cut -d'"' -f2 | awk '{sum += $1} END {print sum}' || echo "0")
+        fi
+        
+        echo "coverage-percentage=$COVERAGE_PERCENTAGE" >> $GITHUB_OUTPUT
+        echo "complexity-score=$COMPLEXITY_SCORE" >> $GITHUB_OUTPUT
+        echo "test-count=$TEST_COUNT" >> $GITHUB_OUTPUT
+        
+        echo "📊 Quality Metrics Summary:"
+        echo "   Coverage: ${COVERAGE_PERCENTAGE}%"
+        echo "   Complexity Score: ${COMPLEXITY_SCORE}"
+        echo "   Test Count: ${TEST_COUNT}"
+        echo "   Total Lines: ${{ env.total_lines }}"
+        echo "   Total Files: ${{ env.total_files }}"
+        
+    - name: Upload metrics artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-metrics
+        path: |
+          complexity-report.json
+          cloc-report.json
+          build/reports/kover/html/
+          build/reports/kover/xml/
+        retention-days: 30
+
+  generate-dashboard:
+    runs-on: ubuntu-latest
+    needs: generate-quality-metrics
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download metrics
+      uses: actions/download-artifact@v4
+      with:
+        name: quality-metrics
+        
+    - name: Generate quality dashboard
+      run: |
+        echo "🎯 Generating quality dashboard..."
+        
+        COVERAGE="${{ needs.generate-quality-metrics.outputs.coverage-percentage }}"
+        COMPLEXITY="${{ needs.generate-quality-metrics.outputs.complexity-score }}"
+        TEST_COUNT="${{ needs.generate-quality-metrics.outputs.test-count }}"
+        
+        # Determine quality grades
+        if (( $(echo "$COVERAGE >= 85" | bc -l) )); then
+          COVERAGE_GRADE="A"
+          COVERAGE_COLOR="🟢"
+        elif (( $(echo "$COVERAGE >= 70" | bc -l) )); then
+          COVERAGE_GRADE="B"
+          COVERAGE_COLOR="🟡"
+        else
+          COVERAGE_GRADE="C"
+          COVERAGE_COLOR="🔴"
+        fi
+        
+        if (( $(echo "$COMPLEXITY <= 5" | bc -l) )); then
+          COMPLEXITY_GRADE="A"
+          COMPLEXITY_COLOR="🟢"
+        elif (( $(echo "$COMPLEXITY <= 10" | bc -l) )); then
+          COMPLEXITY_GRADE="B"
+          COMPLEXITY_COLOR="🟡"
+        else
+          COMPLEXITY_GRADE="C"
+          COMPLEXITY_COLOR="🔴"
+        fi
+        
+        # Generate dashboard HTML
+        cat > quality-dashboard.html << EOF
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>WeatherKMP Quality Dashboard</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+                .container { max-width: 1200px; margin: 0 auto; }
+                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
+                .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+                .metric-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .metric-value { font-size: 2.5em; font-weight: bold; margin: 10px 0; }
+                .metric-label { color: #666; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
+                .grade { display: inline-block; padding: 5px 10px; border-radius: 20px; font-weight: bold; margin-left: 10px; }
+                .grade-a { background: #4CAF50; color: white; }
+                .grade-b { background: #FF9800; color: white; }
+                .grade-c { background: #F44336; color: white; }
+                .chart-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .progress-bar { background: #f0f0f0; border-radius: 10px; overflow: hidden; height: 20px; margin: 10px 0; }
+                .progress-fill { height: 100%; transition: width 0.3s ease; }
+                .coverage-fill { background: linear-gradient(90deg, #4CAF50, #8BC34A); }
+                .timestamp { color: #666; font-size: 0.8em; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🌤️ WeatherKMP Quality Dashboard</h1>
+                    <p>Real-time code quality metrics and health indicators</p>
+                </div>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Test Coverage</div>
+                        <div class="metric-value">${COVERAGE}%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill coverage-fill" style="width: ${COVERAGE}%"></div>
+                        </div>
+                        <span class="grade grade-$(echo $COVERAGE_GRADE | tr 'A-Z' 'a-z')">Grade $COVERAGE_GRADE</span>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">Code Complexity</div>
+                        <div class="metric-value">${COMPLEXITY}</div>
+                        <div style="color: #666; font-size: 0.9em;">Average per function</div>
+                        <span class="grade grade-$(echo $COMPLEXITY_GRADE | tr 'A-Z' 'a-z')">Grade $COMPLEXITY_GRADE</span>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">Test Count</div>
+                        <div class="metric-value">${TEST_COUNT}</div>
+                        <div style="color: #666; font-size: 0.9em;">Total test cases</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">Code Lines</div>
+                        <div class="metric-value">${{ env.total_lines }}</div>
+                        <div style="color: #666; font-size: 0.9em;">${{ env.total_files }} files</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>📊 Quality Trends</h3>
+                    <p>This dashboard provides real-time insights into code quality metrics:</p>
+                    <ul>
+                        <li><strong>Test Coverage:</strong> Percentage of code covered by tests (target: ≥85%)</li>
+                        <li><strong>Code Complexity:</strong> Average cyclomatic complexity per function (target: ≤5)</li>
+                        <li><strong>Test Count:</strong> Total number of automated test cases</li>
+                        <li><strong>Code Lines:</strong> Total lines of production code</li>
+                    </ul>
+                    
+                    <h4>🎯 Quality Goals 2025</h4>
+                    <ul>
+                        <li>Maintain 85%+ test coverage</li>
+                        <li>Keep complexity under 5 per function</li>
+                        <li>Add comprehensive integration tests</li>
+                        <li>Implement performance benchmarks</li>
+                    </ul>
+                </div>
+                
+                <div class="timestamp">
+                    Last updated: $(date -u "+%Y-%m-%d %H:%M:%S UTC") | Commit: ${{ github.sha }}
+                </div>
+            </div>
+        </body>
+        </html>
+        EOF
+        
+    - name: Generate markdown report
+      run: |
+        echo "📝 Generating markdown quality report..."
+        
+        COVERAGE="${{ needs.generate-quality-metrics.outputs.coverage-percentage }}"
+        COMPLEXITY="${{ needs.generate-quality-metrics.outputs.complexity-score }}"
+        TEST_COUNT="${{ needs.generate-quality-metrics.outputs.test-count }}"
+        
+        cat > QUALITY_REPORT.md << EOF
+        # 🎯 Quality Dashboard Report
+        
+        Generated on: $(date -u "+%Y-%m-%d %H:%M:%S UTC")  
+        Commit: \`${{ github.sha }}\`
+        
+        ## 📊 Key Metrics
+        
+        | Metric | Value | Grade | Target | Status |
+        |--------|-------|-------|---------|---------|
+        | **Test Coverage** | ${COVERAGE}% | ${COVERAGE_GRADE} | ≥85% | $([ $(echo "$COVERAGE >= 85" | bc -l) -eq 1 ] && echo "✅" || echo "❌") |
+        | **Code Complexity** | ${COMPLEXITY} | ${COMPLEXITY_GRADE} | ≤5 | $([ $(echo "$COMPLEXITY <= 5" | bc -l) -eq 1 ] && echo "✅" || echo "❌") |
+        | **Test Count** | ${TEST_COUNT} | - | - | 📊 |
+        | **Lines of Code** | ${{ env.total_lines }} | - | - | 📈 |
+        | **File Count** | ${{ env.total_files }} | - | - | 📁 |
+        
+        ## 🔍 Analysis
+        
+        ### Coverage Analysis
+        $(if [ $(echo "$COVERAGE >= 85" | bc -l) -eq 1 ]; then
+          echo "✅ **Excellent coverage!** The codebase meets the 85% coverage target."
+        elif [ $(echo "$COVERAGE >= 70" | bc -l) -eq 1 ]; then
+          echo "⚠️ **Good coverage** but below target. Consider adding more tests."
+        else
+          echo "❌ **Low coverage** detected. Immediate attention needed to improve test coverage."
+        fi)
+        
+        ### Complexity Analysis
+        $(if [ $(echo "$COMPLEXITY <= 5" | bc -l) -eq 1 ]; then
+          echo "✅ **Low complexity** maintained. Code is readable and maintainable."
+        elif [ $(echo "$COMPLEXITY <= 10" | bc -l) -eq 1 ]; then
+          echo "⚠️ **Moderate complexity**. Consider refactoring complex functions."
+        else
+          echo "❌ **High complexity** detected. Refactoring recommended to improve maintainability."
+        fi)
+        
+        ## 🎯 Recommendations
+        
+        $(if [ $(echo "$COVERAGE < 85" | bc -l) -eq 1 ]; then
+          echo "- 🧪 **Increase test coverage** by adding unit tests for uncovered code paths"
+        fi)
+        $(if [ $(echo "$COMPLEXITY > 5" | bc -l) -eq 1 ]; then
+          echo "- 🔄 **Refactor complex functions** to reduce cyclomatic complexity"
+        fi)
+        - 📊 **Monitor trends** by checking this dashboard regularly
+        - 🚀 **Performance testing** should be added for critical user journeys
+        - 🔒 **Security testing** should be integrated into the CI pipeline
+        
+        ## 📈 Historical Trends
+        
+        *Note: Historical data tracking will be available after multiple builds*
+        
+        ---
+        
+        **Quality Standards 2025:** This project follows modern software quality standards with automated monitoring and continuous improvement.
+        EOF
+        
+    - name: Upload dashboard artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-dashboard
+        path: |
+          quality-dashboard.html
+          QUALITY_REPORT.md
+        retention-days: 30
+        
+    - name: Comment quality report on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let reportContent = '';
+          try {
+            reportContent = fs.readFileSync('QUALITY_REPORT.md', 'utf8');
+          } catch (error) {
+            reportContent = '📊 Quality report generated. Check the workflow artifacts for details.';
+          }
+          
+          const coverage = parseFloat('${{ needs.generate-quality-metrics.outputs.coverage-percentage }}');
+          const complexity = parseFloat('${{ needs.generate-quality-metrics.outputs.complexity-score }}');
+          
+          let overallGrade = 'A';
+          let emoji = '🟢';
+          
+          if (coverage < 70 || complexity > 10) {
+            overallGrade = 'C';
+            emoji = '🔴';
+          } else if (coverage < 85 || complexity > 5) {
+            overallGrade = 'B';
+            emoji = '🟡';
+          }
+          
+          const body = \`## \${emoji} Quality Dashboard - Grade \${overallGrade}
+          
+          **Key Metrics:**
+          - 📊 Coverage: \${coverage}%
+          - 🔍 Complexity: \${complexity}
+          - 🧪 Tests: ${{ needs.generate-quality-metrics.outputs.test-count }}
+          
+          \${reportContent}
+          
+          [View Interactive Dashboard](https://github.com/\${context.repo.owner}/\${context.repo.repo}/actions/runs/\${context.runId})
+          \`;
+          
+          // Check if comment already exists
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.body.includes('Quality Dashboard')
+          );
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }
+          
+    - name: Deploy dashboard to GitHub Pages
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        echo "🚀 Deploying quality dashboard..."
+        
+        # Create a simple GitHub Pages deployment
+        mkdir -p gh-pages
+        cp quality-dashboard.html gh-pages/index.html
+        cp QUALITY_REPORT.md gh-pages/
+        
+        # Create a simple directory listing
+        cat > gh-pages/reports.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head><title>Quality Reports</title></head>
+        <body>
+          <h1>WeatherKMP Quality Reports</h1>
+          <ul>
+            <li><a href="index.html">Latest Dashboard</a></li>
+            <li><a href="QUALITY_REPORT.md">Markdown Report</a></li>
+          </ul>
+        </body>
+        </html>
+        EOF
+        
+        echo "Dashboard prepared for deployment"

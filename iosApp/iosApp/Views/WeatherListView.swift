@@ -7,20 +7,17 @@ class WeatherViewModelWrapper: ObservableObject {
     
     init() {
         self.viewModel = IOSWeatherViewModel()
-        self.uiState = viewModel.uiState.value as! WeatherUiState
+        self.uiState = viewModel.getCurrentState()
         
-        // Start observing state changes
+        // Start observing state changes using proper Flow observation
         startObserving()
     }
     
     private func startObserving() {
-        // For now, we'll use a simple timer to poll for changes
-        // In a production app, you'd want to use proper Flow observation
-        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        // Use the StateFlowWrapper for proper reactive observation
+        viewModel.uiStateWrapper.subscribe { [weak self] newState in
             DispatchQueue.main.async {
-                if let newState = self?.viewModel.uiState.value as? WeatherUiState {
-                    self?.uiState = newState
-                }
+                self?.uiState = newState
             }
         }
     }

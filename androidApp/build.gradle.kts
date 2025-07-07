@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -24,15 +25,46 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            
+            // Enhanced R8 optimization for 2025 with security obfuscation
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
+                "proguard-security.pro"  // 2025 Security obfuscation rules
             )
+            
+            // Additional optimizations
+            isDebuggable = false
+            isJniDebuggable = false
+            isRenderscriptDebuggable = false
+            isPseudoLocalesEnabled = false
+            
+            // Baseline profile optimization
+            signingConfig = signingConfigs.getByName("debug") // Use debug signing for now
         }
+        
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            
+            // Debug optimizations
+            isDebuggable = true
+            isJniDebuggable = true
+            // isTestCoverageEnabled = true // Temporarily disabled for DEX optimization
+        }
+        
+        // Create benchmark build type for performance testing
+        create("benchmark") {
+            initWith(getByName("release"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            applicationIdSuffix = ".benchmark"
+            versionNameSuffix = "-benchmark"
+            
+            // Benchmark-specific optimizations
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     

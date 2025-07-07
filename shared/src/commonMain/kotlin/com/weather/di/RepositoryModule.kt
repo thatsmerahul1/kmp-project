@@ -29,4 +29,25 @@ val repositoryModule = module {
             appPreferences = get()
         )
     }
+    
+    // Repository configuration for 2025 standards
+    single(org.koin.core.qualifier.named("repository_config")) {
+        mapOf(
+            "cache_duration_minutes" to 30,
+            "offline_mode_enabled" to true,
+            "auto_refresh_enabled" to true,
+            "max_retry_attempts" to 3,
+            "enable_background_sync" to true
+        )
+    }
+    
+    // Repository performance metrics
+    single(org.koin.core.qualifier.named("repository_metrics")) {
+        mutableMapOf<String, Any>(
+            "cache_hit_count" to 0L,
+            "cache_miss_count" to 0L,
+            "network_request_count" to 0L,
+            "average_response_time_ms" to 0.0
+        )
+    }
 }

@@ -11,4 +11,13 @@ val networkModule = module {
     single<WeatherApi> { 
         WeatherApiImpl(httpClient = get())
     }
+    
+    // Network configuration
+    single(org.koin.core.qualifier.named("network_config")) {
+        mapOf(
+            "timeout_seconds" to 30,
+            "retry_attempts" to 3,
+            "cache_size_mb" to 10
+        )
+    }
 }

@@ -3,6 +3,8 @@ package com.weather.presentation.viewmodel
 import com.weather.di.KoinHelper
 import com.weather.presentation.state.WeatherUiEvent
 import com.weather.presentation.state.WeatherUiState
+import com.weather.utils.StateFlowWrapper
+import com.weather.utils.wrapForIOS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,6 +19,9 @@ class IOSWeatherViewModel {
     )
     
     val uiState: StateFlow<WeatherUiState> = weatherViewModel.uiState
+    
+    // StateFlow wrapper for easy iOS/SwiftUI integration
+    val uiStateWrapper: StateFlowWrapper<WeatherUiState> = weatherViewModel.uiState.wrapForIOS(viewModelScope)
     
     fun onEvent(event: WeatherUiEvent) {
         weatherViewModel.onEvent(event)
@@ -35,7 +40,17 @@ class IOSWeatherViewModel {
         weatherViewModel.onEvent(WeatherUiEvent.RetryLoad)
     }
     
+    fun clearError() {
+        weatherViewModel.onEvent(WeatherUiEvent.ClearError)
+    }
+    
+    // Get current state value synchronously
+    fun getCurrentState(): WeatherUiState {
+        return uiState.value
+    }
+    
     fun dispose() {
+        uiStateWrapper.unsubscribe()
         weatherViewModel.onCleared()
         viewModelScope.cancel()
     }
