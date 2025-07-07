@@ -6,6 +6,10 @@ import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
+import com.weather.domain.common.isSuccess
+import com.weather.domain.common.getOrNull
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.flow.first
@@ -227,20 +231,20 @@ class WeatherRepositoryIntegrationTest {
             when (scenario.input.errorType) {
                 "timeout" -> {
                     // Simulate timeout then success
-                    fakeRepository.setForecastResult(kotlin.Result.failure(Exception("Timeout")))
+                    fakeRepository.setForecastResult(Result.Error(DomainException.Network.Generic("Timeout")))
                     if (scenario.input.shouldRetrySucceed) {
-                        fakeRepository.setForecastResult(kotlin.Result.success(getSampleWeatherList()))
+                        fakeRepository.setForecastResult(Result.Success(getSampleWeatherList()))
                     }
                 }
                 "network_error" -> {
-                    fakeRepository.setForecastResult(kotlin.Result.failure(Exception("Network error")))
+                    fakeRepository.setForecastResult(Result.Error(DomainException.Network.Generic("Network error")))
                     if (!scenario.input.shouldRetrySucceed) {
                         // Set cached data as fallback
                         fakeRepository.setCachedData(getSampleWeatherList())
                     }
                 }
                 "parse_error" -> {
-                    fakeRepository.setForecastResult(kotlin.Result.failure(Exception("Parse error")))
+                    fakeRepository.setForecastResult(Result.Error(DomainException.Unknown("Parse error")))
                 }
             }
             
@@ -357,7 +361,7 @@ class WeatherRepositoryIntegrationTest {
             when (scenario.name) {
                 "Large Dataset Performance" -> {
                     val largeDataset = generateLargeWeatherDataset(input.dataSize ?: 1000)
-                    fakeRepository.setForecastResult(kotlin.Result.success(largeDataset))
+                    fakeRepository.setForecastResult(Result.Success(largeDataset))
                     val result = useCase().first()
                     result.isSuccess
                 }
@@ -369,7 +373,7 @@ class WeatherRepositoryIntegrationTest {
                 }
                 "Memory Usage Under Load" -> {
                     val dataset = generateLargeWeatherDataset(input.dataSize ?: 500)
-                    fakeRepository.setForecastResult(kotlin.Result.success(dataset))
+                    fakeRepository.setForecastResult(Result.Success(dataset))
                     repeat(input.requestCount ?: 50) {
                         useCase().first()
                     }

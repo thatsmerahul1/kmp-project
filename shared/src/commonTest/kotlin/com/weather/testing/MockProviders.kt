@@ -37,7 +37,7 @@ class FakeWeatherRepository(
     override fun getWeatherForecast(): Flow<com.weather.domain.common.Result<List<Weather>>> {
         getForecastCallCount++
         return flowOf(if (shouldReturnError) {
-            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Network("Test error"))
+            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Network.Generic("Test error"))
         } else {
             forecastResult
         })
@@ -46,7 +46,7 @@ class FakeWeatherRepository(
     override suspend fun refreshWeatherForecast(): com.weather.domain.common.Result<List<Weather>> {
         refreshCallCount++
         return if (shouldReturnError) {
-            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Network("Test error"))
+            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Network.Generic("Test error"))
         } else {
             forecastResult
         }

@@ -3,6 +3,11 @@ package com.weather.data.repository
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import com.weather.domain.repository.WeatherRepository
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
+import com.weather.domain.common.isSuccess
+import com.weather.domain.common.isError
+import com.weather.domain.common.getOrNull
 import kotlinx.datetime.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -66,7 +71,7 @@ class WeatherRepositoryImplTest {
         val result = fakeRepository.refreshWeatherForecast()
         
         // Then
-        assertTrue(result.isFailure, "Should return failure when configured for error")
+        assertTrue(result.isError, "Should return failure when configured for error")
     }
 
     @Test
@@ -141,21 +146,21 @@ class FakeWeatherRepository(
         )
     )
     
-    override fun getWeatherForecast(): kotlinx.coroutines.flow.Flow<kotlin.Result<List<Weather>>> {
+    override fun getWeatherForecast(): kotlinx.coroutines.flow.Flow<Result<List<Weather>>> {
         return kotlinx.coroutines.flow.flowOf(
             if (shouldReturnError) {
-                kotlin.Result.failure(Exception("Test error"))
+                Result.Error(DomainException.Unknown("Test error"))
             } else {
-                kotlin.Result.success(sampleWeatherList)
+                Result.Success(sampleWeatherList)
             }
         )
     }
     
-    override suspend fun refreshWeatherForecast(): kotlin.Result<List<Weather>> {
+    override suspend fun refreshWeatherForecast(): Result<List<Weather>> {
         return if (shouldReturnError) {
-            kotlin.Result.failure(Exception("Test refresh error"))
+            Result.Error(DomainException.Unknown("Test refresh error"))
         } else {
-            kotlin.Result.success(sampleWeatherList)
+            Result.Success(sampleWeatherList)
         }
     }
     

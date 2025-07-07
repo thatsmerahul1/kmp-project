@@ -4,6 +4,12 @@ import app.cash.turbine.test
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import com.weather.domain.repository.WeatherRepository
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
+import com.weather.domain.common.isSuccess
+import com.weather.domain.common.isError
+import com.weather.domain.common.getOrNull
+import com.weather.domain.common.exceptionOrNull
 import com.weather.testing.FakeWeatherRepository
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -34,7 +40,7 @@ class GetWeatherForecastUseCaseTest {
                 description = "Clear sky"
             )
         )
-        fakeRepository.setForecastResult(kotlin.Result.success(expectedWeather))
+        fakeRepository.setForecastResult(Result.Success(expectedWeather))
 
         // When
         val flow = useCase()
@@ -54,7 +60,7 @@ class GetWeatherForecastUseCaseTest {
     fun `invoke should return error when repository fails`() = runTest {
         // Given
         val expectedException = Exception("Network error")
-        fakeRepository.setForecastResult(kotlin.Result.failure(expectedException))
+        fakeRepository.setForecastResult(Result.Error(DomainException.Unknown(expectedException.message ?: "Network error")))
 
         // When
         val flow = useCase()
@@ -62,7 +68,7 @@ class GetWeatherForecastUseCaseTest {
         // Then
         flow.test {
             val result = awaitItem()
-            assertTrue(result.isFailure, "Use case should return failure when repository fails")
+            assertTrue(result.isError, "Use case should return failure when repository fails")
             assertEquals("Network error", result.exceptionOrNull()?.message)
             awaitComplete()
         }
