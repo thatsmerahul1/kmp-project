@@ -57,12 +57,12 @@ private fun getWeatherIconData(condition: WeatherCondition): WeatherIconData {
             defaultTint = AtomicDesignSystem.colors.Rainy
         )
         WeatherCondition.DRIZZLE -> WeatherIconData(
-            icon = Icons.Default.Circle, // Circle for drizzle
+            icon = Icons.Default.Info, // Info for drizzle
             contentDescription = "Drizzle",
             defaultTint = AtomicDesignSystem.colors.Rainy
         )
         WeatherCondition.SNOW -> WeatherIconData(
-            icon = Icons.Default.Circle, // Circle for snow
+            icon = Icons.Default.Star, // Star for snow
             contentDescription = "Snow",
             defaultTint = AtomicDesignSystem.colors.Snowy
         )
