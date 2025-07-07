@@ -381,7 +381,7 @@ private fun getDetailCards(weather: Weather): List<DetailCardData> {
             icon = "💧",
             title = "Humidity",
             value = "${weather.humidity}%",
-            subtitle = getHumidityDescription(weather.humidity.toInt())
+            subtitle = getHumidityDescription(weather.humidity)
         ),
         DetailCardData(
             icon = WeatherUtils.getWeatherEmoji(weather.condition),
