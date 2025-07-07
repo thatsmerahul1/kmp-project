@@ -54,22 +54,35 @@ class GeocodingServiceImpl(
 
     override suspend fun reverseGeocode(latitude: Double, longitude: Double): LocationData? {
         return try {
+            println("GeocodingService: Reverse geocoding coordinates: $latitude, $longitude")
             val response: ReverseGeocodeResponse = httpClient.get(REVERSE_GEOCODING_URL) {
                 parameter("latitude", latitude)
                 parameter("longitude", longitude)
                 parameter("localityLanguage", "en")
             }.body()
 
-            LocationData(
+            val cityName = response.city ?: response.locality ?: "Unknown"
+            println("GeocodingService: Reverse geocoding result - City: $cityName, Country: ${response.countryName}, State: ${response.principalSubdivision}")
+
+            val locationData = LocationData(
                 latitude = latitude,
                 longitude = longitude,
-                cityName = response.city ?: response.locality ?: "Unknown",
+                cityName = cityName,
                 countryName = response.countryName,
                 state = response.principalSubdivision,
                 pincode = response.postcode,
+                displayName = buildString {
+                    append(cityName)
+                    response.principalSubdivision?.let { append(", $it") }
+                    response.countryName?.let { append(", $it") }
+                },
                 isCurrentLocation = true
             )
+            
+            println("GeocodingService: Created LocationData: ${locationData.displayName}")
+            locationData
         } catch (e: Exception) {
+            println("GeocodingService: Reverse geocoding failed: ${e.message}")
             null
         }
     }

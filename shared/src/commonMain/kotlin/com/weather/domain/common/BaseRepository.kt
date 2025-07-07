@@ -160,7 +160,7 @@ abstract class BaseCacheableRepositoryImpl<T> : BaseRepositoryImpl(), CacheableR
      * Default cache validity duration (24 hours)
      * Override in concrete implementations for different durations
      */
-    protected open val cacheValidityDurationMs: Long = 24 * 60 * 60 * 1000L // 24 hours
+    protected open val cacheValidityDurationMs: Long = 60 * 1000L // 24 hours
     
     /**
      * Abstract method to fetch data from remote source

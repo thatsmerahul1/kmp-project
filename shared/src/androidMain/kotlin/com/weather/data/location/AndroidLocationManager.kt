@@ -52,9 +52,63 @@ class AndroidLocationManager(
     }
     
     override suspend fun getCurrentLocationData(): LocationData? {
-        // For now, return null (simplified implementation)
-        // Full implementation would use FusedLocationProviderClient and geocoding
-        return null
+        println("AndroidLocationManager: Getting current location data...")
+        
+        val hasPermission = hasLocationPermission()
+        println("AndroidLocationManager: Has location permission: $hasPermission")
+        
+        if (!hasPermission) {
+            println("AndroidLocationManager: No location permission - need to request at runtime")
+            // For now, we'll continue with simulated location even without permission for testing
+            // In production, this should return null or request permissions
+        }
+        
+        val locationEnabled = isLocationEnabled()
+        println("AndroidLocationManager: Location services enabled: $locationEnabled")
+        
+        if (!locationEnabled) {
+            println("AndroidLocationManager: Location services disabled")
+            // For testing, we'll continue even if location services are disabled
+        }
+        
+        println("AndroidLocationManager: Simulating GPS location detection...")
+        
+        // TODO: Replace with actual FusedLocationProviderClient implementation
+        // For now, simulate getting GPS coordinates and reverse geocoding them
+        try {
+            // Simulate getting GPS coordinates (in a real app, this would come from FusedLocationProviderClient)
+            // Using Varanasi coordinates for testing (you can change these to any location)
+            val simulatedLatitude = 25.3176 // Varanasi, Uttar Pradesh, India
+            val simulatedLongitude = 82.9739
+            
+            println("AndroidLocationManager: Simulated GPS coordinates: $simulatedLatitude, $simulatedLongitude")
+            
+            // Try to reverse geocode the coordinates to get city information
+            val geocodedLocation = geocodingService.reverseGeocode(simulatedLatitude, simulatedLongitude)
+            
+            if (geocodedLocation != null) {
+                println("AndroidLocationManager: Geocoded location: ${geocodedLocation.displayName}")
+                return geocodedLocation.copy(
+                    isCurrentLocation = true,
+                    accuracy = 10.0f, // Simulated accuracy
+                    timestamp = System.currentTimeMillis()
+                )
+            } else {
+                println("AndroidLocationManager: Geocoding failed, creating basic location data")
+                // If geocoding fails, create basic location data
+                return LocationData(
+                    latitude = simulatedLatitude,
+                    longitude = simulatedLongitude,
+                    cityName = "Current Location",
+                    isCurrentLocation = true,
+                    accuracy = 10.0f,
+                    timestamp = System.currentTimeMillis()
+                )
+            }
+        } catch (e: Exception) {
+            println("AndroidLocationManager: Error getting location: ${e.message}")
+            return null
+        }
     }
     
     override fun observeLocationUpdates(): Flow<Location> = flow {

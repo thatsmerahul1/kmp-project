@@ -16,9 +16,25 @@ object WeatherMapper {
             condition = WeatherCondition.fromWeatherCode(weatherCode),
             temperatureHigh = temperatureMax,
             temperatureLow = temperatureMin,
+            temperatureCurrent = temperatureCurrent,
             humidity = humidity,
             icon = getIconFromWeatherCode(weatherCode),
-            description = getDescriptionFromWeatherCode(weatherCode)
+            description = getDescriptionFromWeatherCode(weatherCode),
+            // Enhanced weather details
+            pressure = pressure,
+            windSpeed = windSpeed,
+            windDirection = windDirection,
+            visibility = visibility,
+            uvIndex = uvIndex,
+            precipitationChance = precipitationChance,
+            precipitationAmount = precipitationAmount,
+            cloudCover = cloudCover,
+            feelsLike = feelsLike,
+            dewPoint = dewPoint,
+            sunrise = sunrise,
+            sunset = sunset,
+            moonPhase = getMoonPhase(parsedDate), // Generate moon phase
+            airQuality = null // Will be populated from a separate API call in future
         )
     }
 
@@ -96,6 +112,25 @@ object WeatherMapper {
             96 -> "Thunderstorm with slight hail"
             99 -> "Thunderstorm with heavy hail"
             else -> "Unknown"
+        }
+    }
+    
+    private fun getMoonPhase(date: LocalDate): String {
+        // Simple moon phase calculation based on date
+        // This is a simplified calculation - real apps would use astronomy libraries
+        val dayOfYear = date.dayOfYear
+        val moonCycle = 29.53 // Average lunar month in days
+        val phase = (dayOfYear % moonCycle) / moonCycle
+        
+        return when {
+            phase < 0.125 -> "New Moon"
+            phase < 0.25 -> "Waxing Crescent"
+            phase < 0.375 -> "First Quarter"
+            phase < 0.5 -> "Waxing Gibbous"
+            phase < 0.625 -> "Full Moon"
+            phase < 0.75 -> "Waning Gibbous"
+            phase < 0.875 -> "Last Quarter"
+            else -> "Waning Crescent"
         }
     }
 }

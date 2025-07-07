@@ -4,5 +4,5 @@ import com.weather.presentation.viewmodel.WeatherViewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
-    factory { WeatherViewModel(get(), get(), get()) }
+    factory { WeatherViewModel(get(), get(), get(), get()) }
 }

@@ -37,9 +37,22 @@ class RemoteWeatherDataSourceImpl(
                 date = date,
                 temperatureMax = response.daily.temperatureMax[index],
                 temperatureMin = response.daily.temperatureMin[index],
+                temperatureCurrent = response.daily.temperatureCurrent?.getOrNull(index),
                 humidity = response.daily.humidity[index],
                 weatherCode = response.daily.weatherCode[index],
-                windSpeed = response.daily.windSpeed[index]
+                windSpeed = response.daily.windSpeed[index],
+                // Enhanced weather fields
+                pressure = response.daily.pressure?.getOrNull(index),
+                windDirection = response.daily.windDirection?.getOrNull(index),
+                visibility = response.daily.visibility?.getOrNull(index),
+                uvIndex = response.daily.uvIndex?.getOrNull(index),
+                precipitationChance = response.daily.precipitationChance?.getOrNull(index),
+                precipitationAmount = response.daily.precipitationAmount?.getOrNull(index),
+                cloudCover = response.daily.cloudCover?.getOrNull(index),
+                feelsLike = response.daily.feelsLike?.getOrNull(index),
+                dewPoint = response.daily.dewPoint?.getOrNull(index),
+                sunrise = response.daily.sunrise?.getOrNull(index),
+                sunset = response.daily.sunset?.getOrNull(index)
             )
         }
         

@@ -10,6 +10,9 @@ import com.weather.domain.repository.WeatherRepository
 import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
 import com.weather.domain.service.LocationService
+import com.weather.domain.permission.PermissionManager
+import com.weather.domain.permission.Permission
+import com.weather.domain.permission.PermissionStatus
 import com.weather.domain.common.Result
 import com.weather.domain.common.DomainException
 import com.weather.domain.common.isSuccess
@@ -41,6 +44,7 @@ class WeatherViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeWeatherRepository
     private lateinit var fakeLocationService: FakeLocationService
+    private lateinit var fakePermissionManager: FakePermissionManager
     private lateinit var getWeatherUseCase: GetWeatherForecastUseCase
     private lateinit var refreshWeatherUseCase: RefreshWeatherUseCase
     private lateinit var viewModel: WeatherViewModel
@@ -50,9 +54,10 @@ class WeatherViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeWeatherRepository()
         fakeLocationService = FakeLocationService()
+        fakePermissionManager = FakePermissionManager()
         getWeatherUseCase = GetWeatherForecastUseCase(fakeRepository)
         refreshWeatherUseCase = RefreshWeatherUseCase(fakeRepository)
-        viewModel = WeatherViewModel(getWeatherUseCase, refreshWeatherUseCase, fakeLocationService)
+        viewModel = WeatherViewModel(getWeatherUseCase, refreshWeatherUseCase, fakeLocationService, fakePermissionManager)
     }
 
     @AfterTest
@@ -189,4 +194,15 @@ class FakeLocationService : LocationService {
         kotlinx.coroutines.flow.flowOf(defaultLocation)
     
     override suspend fun getDefaultLocation(): LocationData = defaultLocation
+}
+
+class FakePermissionManager : PermissionManager {
+    override suspend fun checkPermission(permission: Permission): PermissionStatus = PermissionStatus.GRANTED
+    override suspend fun requestPermission(permission: Permission): PermissionStatus = PermissionStatus.GRANTED
+    override suspend fun requestPermissions(permissions: List<Permission>): Map<Permission, PermissionStatus> = 
+        permissions.associateWith { PermissionStatus.GRANTED }
+    override suspend fun hasLocationPermission(): Boolean = true
+    override suspend fun requestLocationPermission(): Boolean = true
+    override suspend fun openAppSettings() {}
+    override suspend fun shouldShowRationale(permission: Permission): Boolean = false
 }

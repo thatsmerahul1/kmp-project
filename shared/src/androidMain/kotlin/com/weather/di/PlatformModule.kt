@@ -4,7 +4,9 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.weather.database.WeatherDatabase
 import com.weather.data.location.AndroidLocationManager
+import com.weather.data.permission.AndroidPermissionManager
 import com.weather.domain.location.LocationManager
+import com.weather.domain.permission.PermissionManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -23,5 +25,9 @@ actual val platformModule = module {
     
     single<LocationManager> {
         AndroidLocationManager(androidContext(), get())
+    }
+    
+    single<PermissionManager> {
+        AndroidPermissionManager(androidContext())
     }
 }

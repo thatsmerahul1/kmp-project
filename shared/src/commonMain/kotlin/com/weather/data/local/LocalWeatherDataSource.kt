@@ -12,8 +12,8 @@ interface LocalWeatherDataSource {
     suspend fun saveWeatherForecasts(forecasts: List<Weather>)
     suspend fun getWeatherForecasts(): List<Weather>
     fun getWeatherForecastsFlow(): Flow<List<Weather>>
-    suspend fun isCacheValid(cacheExpiryHours: Int): Boolean
-    suspend fun clearOldCache(cacheExpiryHours: Int)
+    suspend fun isCacheValid(cacheExpiryHours: Double): Boolean
+    suspend fun clearOldCache(cacheExpiryHours: Double)
     suspend fun clearAllCache()
 }
 
@@ -39,13 +39,16 @@ class LocalWeatherDataSourceImpl(
         }
     }
 
-    override suspend fun isCacheValid(cacheExpiryHours: Int): Boolean {
-        val expiryTime = Clock.System.now().toEpochMilliseconds() - (cacheExpiryHours * 60 * 60 * 1000)
-        return weatherDao.isCacheValid(expiryTime)
+    override suspend fun isCacheValid(cacheExpiryHours: Double): Boolean {
+        val expiryTime = Clock.System.now().toEpochMilliseconds() - (cacheExpiryHours * 60 * 60 * 1000).toLong()
+        println("LocalWeatherDataSource: Checking cache validity - expiry hours: $cacheExpiryHours, expiry time: $expiryTime")
+        val isValid = weatherDao.isCacheValid(expiryTime)
+        println("LocalWeatherDataSource: Cache valid: $isValid")
+        return isValid
     }
 
-    override suspend fun clearOldCache(cacheExpiryHours: Int) {
-        val expiryTime = Clock.System.now().toEpochMilliseconds() - (cacheExpiryHours * 60 * 60 * 1000)
+    override suspend fun clearOldCache(cacheExpiryHours: Double) {
+        val expiryTime = Clock.System.now().toEpochMilliseconds() - (cacheExpiryHours * 60 * 60 * 1000).toLong()
         weatherDao.deleteOlderThan(expiryTime)
     }
 

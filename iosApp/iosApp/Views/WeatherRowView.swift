@@ -29,6 +29,20 @@ struct WeatherRowView: View {
             }
             
             Spacer()
+            VStack(alignment: .leading, spacing: 10) {}
+            .padding(32)
+            .background(
+              EllipticalGradient(
+                stops: [
+                  Gradient.Stop(color: Color(red: 0.27, green: 0.15, blue: 0.55), location: 0.00),
+                  Gradient.Stop(color: Color(red: 0.18, green: 0.2, blue: 0.35), location: 1.00),
+                ],
+                center: UnitPoint(x: 0.93, y: 0.74)
+              )
+            )
+            .cornerRadius(44)
+            .shadow(color: Color(red: 0.29, green: 0.22, blue: 0.5).opacity(0.7), radius: 50, x: 0, y: 20)
+            Spacer()
             
             VStack(alignment: .trailing) {
                 Text("\(Int(weather.temperatureHigh))°")

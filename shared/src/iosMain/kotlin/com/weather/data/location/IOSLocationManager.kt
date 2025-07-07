@@ -57,19 +57,56 @@ class IOSLocationManager(
     }
     
     override suspend fun getCurrentLocationData(): LocationData? {
-        val location = getCurrentLocation() ?: return null
+        println("IOSLocationManager: Getting current location data...")
         
-        // Try to get more detailed location information using geocoding service
-        val geocodedLocation = geocodingService.reverseGeocode(location.latitude, location.longitude)
+        if (!hasLocationPermission()) {
+            println("IOSLocationManager: No location permission")
+            return null
+        }
         
-        return geocodedLocation ?: LocationData(
-            latitude = location.latitude,
-            longitude = location.longitude,
-            cityName = "Unknown Location",
-            isCurrentLocation = true,
-            accuracy = location.accuracy,
-            timestamp = location.timestamp
-        )
+        if (!isLocationEnabled()) {
+            println("IOSLocationManager: Location services disabled")
+            return null
+        }
+        
+        println("IOSLocationManager: Simulating GPS location detection...")
+        
+        // TODO: Replace with actual CoreLocation implementation
+        // For now, simulate getting GPS coordinates and reverse geocoding them
+        try {
+            // Simulate getting GPS coordinates (in a real app, this would come from CoreLocation)
+            // Using Varanasi coordinates for testing (you can change these to any location)
+            val simulatedLatitude = 25.3176 // Varanasi, Uttar Pradesh, India
+            val simulatedLongitude = 82.9739
+            
+            println("IOSLocationManager: Simulated GPS coordinates: $simulatedLatitude, $simulatedLongitude")
+            
+            // Try to reverse geocode the coordinates to get city information
+            val geocodedLocation = geocodingService.reverseGeocode(simulatedLatitude, simulatedLongitude)
+            
+            if (geocodedLocation != null) {
+                println("IOSLocationManager: Geocoded location: ${geocodedLocation.displayName}")
+                return geocodedLocation.copy(
+                    isCurrentLocation = true,
+                    accuracy = 10.0f, // Simulated accuracy
+                    timestamp = 0L
+                )
+            } else {
+                println("IOSLocationManager: Geocoding failed, creating basic location data")
+                // If geocoding fails, create basic location data
+                return LocationData(
+                    latitude = simulatedLatitude,
+                    longitude = simulatedLongitude,
+                    cityName = "Current Location",
+                    isCurrentLocation = true,
+                    accuracy = 10.0f,
+                    timestamp = 0L
+                )
+            }
+        } catch (e: Exception) {
+            println("IOSLocationManager: Error getting location: ${e.message}")
+            return null
+        }
     }
     
     override fun observeLocationUpdates(): Flow<Location> = flow {

@@ -4,6 +4,9 @@ import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
 import com.weather.domain.common.Result
 import com.weather.domain.service.LocationService
+import com.weather.domain.permission.PermissionManager
+import com.weather.domain.permission.Permission
+import com.weather.domain.permission.PermissionStatus
 import com.weather.presentation.state.WeatherUiEvent
 import com.weather.presentation.state.WeatherUiState
 import com.weather.presentation.state.ConnectionStatus
@@ -22,7 +25,8 @@ import kotlinx.datetime.Clock
 class WeatherViewModel(
     private val getWeatherForecastUseCase: GetWeatherForecastUseCase,
     private val refreshWeatherUseCase: RefreshWeatherUseCase,
-    private val locationService: LocationService
+    private val locationService: LocationService,
+    private val permissionManager: PermissionManager
 ) {
     
     private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -31,8 +35,8 @@ class WeatherViewModel(
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
     init {
-        loadCurrentLocation()
-        loadWeather()
+        // Request permissions first, then load location and weather
+        requestInitialPermissions()
     }
 
     fun onEvent(event: WeatherUiEvent) {
@@ -52,7 +56,16 @@ class WeatherViewModel(
 
     private fun loadWeather() {
         viewModelScope.launch {
-            getWeatherForecastUseCase()
+            println("WeatherViewModel: Loading weather...")
+            val currentLocation = _uiState.value.currentLocation
+            if (currentLocation == null) {
+                println("WeatherViewModel: No current location available, loading location first...")
+                loadCurrentLocation()
+                return@launch
+            }
+            
+            println("WeatherViewModel: Loading weather for location: ${currentLocation.displayName}")
+            getWeatherForecastUseCase(currentLocation)
                 .onStart {
                     _uiState.value = _uiState.value.copy(
                         isLoading = _uiState.value.weatherList.isEmpty(),
@@ -97,12 +110,20 @@ class WeatherViewModel(
 
     private fun refreshWeather() {
         viewModelScope.launch {
+            println("WeatherViewModel: Refreshing weather...")
+            val currentLocation = _uiState.value.currentLocation
+            if (currentLocation == null) {
+                println("WeatherViewModel: No current location available for refresh")
+                return@launch
+            }
+            
             _uiState.value = _uiState.value.copy(
                 isRefreshing = true,
                 error = null
             )
             
-            val result = refreshWeatherUseCase()
+            println("WeatherViewModel: Refreshing weather for location: ${currentLocation.displayName}")
+            val result = refreshWeatherUseCase(currentLocation)
             when (result) {
                 is Result.Success -> {
                     _uiState.value = _uiState.value.copy(
@@ -153,6 +174,9 @@ class WeatherViewModel(
                     currentLocation = location,
                     isLocationLoading = false
                 )
+                
+                // Auto-load weather data for the new location
+                loadWeather()
             } catch (e: Exception) {
                 println("WeatherViewModel: Failed to load location: ${e.message}")
                 _uiState.value = _uiState.value.copy(
@@ -229,6 +253,40 @@ class WeatherViewModel(
                 _uiState.value = _uiState.value.copy(
                     locationError = e.message ?: "Failed to search locations"
                 )
+            }
+        }
+    }
+
+    private fun requestInitialPermissions() {
+        viewModelScope.launch {
+            try {
+                println("WeatherViewModel: Requesting initial permissions...")
+                
+                // Request all necessary permissions
+                val requiredPermissions = listOf(
+                    Permission.LOCATION_FINE,
+                    Permission.LOCATION_COARSE,
+                    Permission.INTERNET,
+                    Permission.NETWORK_STATE
+                )
+                
+                val permissionResults = permissionManager.requestPermissions(requiredPermissions)
+                
+                permissionResults.forEach { (permission, status) ->
+                    println("WeatherViewModel: Permission $permission status: $status")
+                }
+                
+                // Check if we have location permissions
+                val hasLocationPermission = permissionManager.hasLocationPermission()
+                println("WeatherViewModel: Has location permission: $hasLocationPermission")
+                
+                // Load location regardless of permission status (will use fallback if needed)
+                loadCurrentLocation()
+                
+            } catch (e: Exception) {
+                println("WeatherViewModel: Failed to request permissions: ${e.message}")
+                // Continue loading even if permission request fails
+                loadCurrentLocation()
             }
         }
     }
