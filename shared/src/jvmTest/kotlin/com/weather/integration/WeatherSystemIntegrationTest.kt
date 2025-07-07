@@ -9,6 +9,12 @@ import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
+import com.weather.domain.common.isSuccess
+import com.weather.domain.common.isError
+import com.weather.domain.common.getOrNull
+import com.weather.domain.common.exceptionOrNull
 import io.mockk.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
@@ -82,7 +88,6 @@ class WeatherSystemIntegrationTest {
 
         // Default setup
         coEvery { mockAppPreferences.getCacheConfig() } returns CacheConfig()
-        coEvery { mockAppPreferences.getApiKey() } returns "test_api_key"
         coEvery { mockAppPreferences.getDefaultLocation() } returns "London,UK"
     }
 
@@ -97,7 +102,7 @@ class WeatherSystemIntegrationTest {
         // Given - Fresh app start (no cache)
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns emptyList()
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns false
-        coEvery { mockRemoteDataSource.getWeatherForecast("London,UK", "test_api_key") } returns londonWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast("London,UK") } returns londonWeather
 
         // When - User opens app and requests weather
         val weatherFlow = getWeatherUseCase()
@@ -109,7 +114,7 @@ class WeatherSystemIntegrationTest {
         
         // Verify the complete flow
         coVerify(exactly = 1) { mockLocalDataSource.getWeatherForecasts() }
-        coVerify(exactly = 1) { mockRemoteDataSource.getWeatherForecast("London,UK", "test_api_key") }
+        coVerify(exactly = 1) { mockRemoteDataSource.getWeatherForecast("London,UK") }
         coVerify(exactly = 1) { mockLocalDataSource.saveWeatherForecasts(londonWeather) }
     }
 
@@ -122,7 +127,7 @@ class WeatherSystemIntegrationTest {
         
         // Fresh data is slightly different (temperature change)
         val updatedWeather = londonWeather.map { it.copy(temperatureHigh = it.temperatureHigh + 2.0) }
-        coEvery { mockRemoteDataSource.getWeatherForecast("London,UK", "test_api_key") } returns updatedWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast("London,UK") } returns updatedWeather
 
         // When - User requests weather
         val weatherFlow = getWeatherUseCase()
@@ -147,7 +152,7 @@ class WeatherSystemIntegrationTest {
         coEvery { mockAppPreferences.getDefaultLocation() } returns "London,UK"
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns londonWeather
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast("London,UK", "test_api_key") } returns londonWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast("London,UK") } returns londonWeather
 
         // When - Get initial weather
         val londonResult = getWeatherUseCase().first()
@@ -158,7 +163,7 @@ class WeatherSystemIntegrationTest {
 
         // Given - User changes location to Tokyo
         coEvery { mockAppPreferences.getDefaultLocation() } returns "Tokyo,JP"
-        coEvery { mockRemoteDataSource.getWeatherForecast("Tokyo,JP", "test_api_key") } returns tokyoWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast("Tokyo,JP") } returns tokyoWeather
 
         // When - Refresh weather for new location
         val tokyoResult = refreshWeatherUseCase()
@@ -168,7 +173,7 @@ class WeatherSystemIntegrationTest {
         assertEquals(tokyoWeather, tokyoResult.getOrNull())
         
         // Verify new location was called
-        coVerify { mockRemoteDataSource.getWeatherForecast("Tokyo,JP", "test_api_key") }
+        coVerify { mockRemoteDataSource.getWeatherForecast("Tokyo,JP") }
     }
 
     @Test
@@ -177,7 +182,7 @@ class WeatherSystemIntegrationTest {
         // Given - App with stale cache data
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns londonWeather
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns false // Cache is stale
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } throws Exception("Network unavailable")
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } throws Exception("Network unavailable")
 
         // When - User requests weather (network is down)
         val result = getWeatherUseCase().first()
@@ -190,7 +195,7 @@ class WeatherSystemIntegrationTest {
         val refreshResult = refreshWeatherUseCase()
         
         // Should get error
-        assertTrue(refreshResult.isFailure)
+        assertTrue(refreshResult.isError)
         assertEquals("Network unavailable", refreshResult.exceptionOrNull()?.message)
     }
 
@@ -200,7 +205,7 @@ class WeatherSystemIntegrationTest {
         // Given
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns londonWeather
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns londonWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns londonWeather
 
         // When - Multiple concurrent requests (simulate multiple UI components)
         val flow1 = getWeatherUseCase()
@@ -230,7 +235,7 @@ class WeatherSystemIntegrationTest {
         // Given
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns londonWeather
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns londonWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns londonWeather
 
         val startTime = System.currentTimeMillis()
 
@@ -260,7 +265,7 @@ class WeatherSystemIntegrationTest {
         
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns londonWeather
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns false
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns freshWeather
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns freshWeather
 
         // When - Get weather (should fetch fresh data)
         val forecastResult = getWeatherUseCase().first()

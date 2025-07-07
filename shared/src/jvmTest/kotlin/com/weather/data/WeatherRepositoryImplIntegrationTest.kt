@@ -7,6 +7,12 @@ import com.weather.data.repository.WeatherRepositoryImpl
 import com.weather.domain.model.CacheConfig
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
+import com.weather.domain.common.isSuccess
+import com.weather.domain.common.isError
+import com.weather.domain.common.getOrNull
+import com.weather.domain.common.exceptionOrNull
 import io.mockk.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -64,7 +70,6 @@ class WeatherRepositoryImplIntegrationTest {
 
         // Default mock setup
         coEvery { mockAppPreferences.getCacheConfig() } returns CacheConfig()
-        coEvery { mockAppPreferences.getApiKey() } returns "test_api_key"
         coEvery { mockAppPreferences.getDefaultLocation() } returns "London,UK"
     }
 
@@ -79,7 +84,7 @@ class WeatherRepositoryImplIntegrationTest {
         // Given
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns sampleWeatherList
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns sampleWeatherList
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns sampleWeatherList
 
         // When
         val flow = repository.getWeatherForecast()
@@ -92,7 +97,7 @@ class WeatherRepositoryImplIntegrationTest {
         // Verify interactions
         coVerify { mockLocalDataSource.getWeatherForecasts() }
         coVerify { mockLocalDataSource.isCacheValid(any()) }
-        coVerify { mockRemoteDataSource.getWeatherForecast("London,UK", "test_api_key") }
+        coVerify { mockRemoteDataSource.getWeatherForecast("London,UK") }
     }
 
     @Test
@@ -101,7 +106,7 @@ class WeatherRepositoryImplIntegrationTest {
         // Given
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns emptyList()
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns false
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns sampleWeatherList
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns sampleWeatherList
 
         // When
         val flow = repository.getWeatherForecast()
@@ -115,31 +120,18 @@ class WeatherRepositoryImplIntegrationTest {
         coVerify { mockLocalDataSource.saveWeatherForecasts(sampleWeatherList) }
     }
 
-    @ParameterizedTest
-    @DisplayName("Integration: Error handling with different API keys")
-    @ValueSource(strings = ["", "invalid_key", "expired_key"])
-    fun `refreshWeatherForecast should handle various API key scenarios`(apiKey: String) = runTest {
-        // Given
-        coEvery { mockAppPreferences.getApiKey() } returns apiKey
+    @Test
+    @DisplayName("Integration: Error handling with network failure")
+    fun `refreshWeatherForecast should handle network failure`() = runTest {
+        // Given - Mock network failure
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } throws Exception("Network unavailable")
         
-        if (apiKey.isEmpty()) {
-            // When
-            val result = repository.refreshWeatherForecast()
-            
-            // Then
-            assertTrue(result.isFailure)
-            assertEquals("API key not configured", result.exceptionOrNull()?.message)
-        } else {
-            // Mock network failure for invalid keys
-            coEvery { mockRemoteDataSource.getWeatherForecast(any(), apiKey) } throws Exception("Unauthorized")
-            
-            // When
-            val result = repository.refreshWeatherForecast()
-            
-            // Then
-            assertTrue(result.isFailure)
-            assertEquals("Unauthorized", result.exceptionOrNull()?.message)
-        }
+        // When
+        val result = repository.refreshWeatherForecast()
+        
+        // Then
+        assertTrue(result.isError)
+        assertEquals("Refresh failed", result.exceptionOrNull()?.message)
     }
 
     @Test
@@ -148,7 +140,7 @@ class WeatherRepositoryImplIntegrationTest {
         // Given
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns sampleWeatherList
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns sampleWeatherList
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns sampleWeatherList
 
         // When - Simulate concurrent access
         val flow1 = repository.getWeatherForecast()
@@ -170,7 +162,7 @@ class WeatherRepositoryImplIntegrationTest {
         // Given
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns sampleWeatherList
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns sampleWeatherList
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns sampleWeatherList
 
         val startTime = System.currentTimeMillis()
 
@@ -189,19 +181,19 @@ class WeatherRepositoryImplIntegrationTest {
     @DisplayName("Integration: Cache configuration variations")
     fun `repository should respect different cache configurations`() = runTest {
         // Given - Short cache TTL
-        val shortCacheConfig = CacheConfig(ttlMinutes = 1)
+        val shortCacheConfig = CacheConfig(cacheExpiryHours = 1)
         coEvery { mockAppPreferences.getCacheConfig() } returns shortCacheConfig
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns sampleWeatherList
-        coEvery { mockLocalDataSource.isCacheValid(shortCacheConfig) } returns false
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns sampleWeatherList
+        coEvery { mockLocalDataSource.isCacheValid(shortCacheConfig.cacheExpiryHours) } returns false
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns sampleWeatherList
 
         // When
         val result = repository.getWeatherForecast().first()
 
         // Then
         assertTrue(result.isSuccess)
-        coVerify { mockLocalDataSource.isCacheValid(shortCacheConfig) }
-        coVerify { mockRemoteDataSource.getWeatherForecast(any(), any()) }
+        coVerify { mockLocalDataSource.isCacheValid(shortCacheConfig.cacheExpiryHours) }
+        coVerify { mockRemoteDataSource.getWeatherForecast(any()) }
     }
 
     @Test
@@ -214,7 +206,7 @@ class WeatherRepositoryImplIntegrationTest {
         
         coEvery { mockLocalDataSource.getWeatherForecasts() } returns sampleWeatherList
         coEvery { mockLocalDataSource.isCacheValid(any()) } returns true
-        coEvery { mockRemoteDataSource.getWeatherForecast(any(), any()) } returns updatedWeatherList
+        coEvery { mockRemoteDataSource.getWeatherForecast(any()) } returns updatedWeatherList
 
         // When
         val forecastResult = repository.getWeatherForecast().first()

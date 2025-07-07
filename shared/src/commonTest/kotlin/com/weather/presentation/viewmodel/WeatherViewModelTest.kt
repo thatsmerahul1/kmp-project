@@ -6,6 +6,12 @@ import com.weather.domain.model.WeatherCondition
 import com.weather.domain.repository.WeatherRepository
 import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
+import com.weather.domain.common.isSuccess
+import com.weather.domain.common.isError
+import com.weather.domain.common.getOrNull
+import com.weather.domain.common.exceptionOrNull
 import com.weather.testing.FakeWeatherRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -69,7 +75,7 @@ class WeatherViewModelTest {
                 description = "Clear sky"
             )
         )
-        fakeRepository.setForecastResult(kotlin.Result.success(weatherData))
+        fakeRepository.setForecastResult(Result.Success(weatherData))
 
         // When
         val result = getWeatherUseCase().test {
@@ -97,7 +103,7 @@ class WeatherViewModelTest {
                 description = "Partly cloudy"
             )
         )
-        fakeRepository.setForecastResult(kotlin.Result.success(weatherData))
+        fakeRepository.setForecastResult(Result.Success(weatherData))
 
         // When
         val result = refreshWeatherUseCase()
@@ -112,13 +118,13 @@ class WeatherViewModelTest {
     fun `error handling should work properly`() = runTest {
         // Given
         val exception = Exception("Network error")
-        fakeRepository.setForecastResult(kotlin.Result.failure(exception))
+        fakeRepository.setForecastResult(Result.Error(DomainException.Unknown(exception.message ?: "Network error")))
 
         // When
         val result = refreshWeatherUseCase()
 
         // Then
-        assertTrue(result.isFailure)
+        assertTrue(result.isError)
         assertEquals("Network error", result.exceptionOrNull()?.message)
         assertEquals(1, fakeRepository.refreshCallCount)
     }
@@ -137,7 +143,7 @@ class WeatherViewModelTest {
                 description = "Clear sky"
             )
         )
-        fakeRepository.setForecastResult(kotlin.Result.success(weatherData))
+        fakeRepository.setForecastResult(Result.Success(weatherData))
 
         // When
         getWeatherUseCase().test {
