@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.weather.android.util.WeatherUtils
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import kotlinx.datetime.LocalDate
@@ -60,7 +61,7 @@ fun WeatherItem(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = getWeatherEmoji(weather.condition),
+                    text = WeatherUtils.getWeatherEmoji(weather.condition),
                     style = MaterialTheme.typography.headlineLarge,
                     modifier = Modifier.size(48.dp)
                 )
@@ -94,18 +95,6 @@ fun WeatherItem(
     }
 }
 
-private fun getWeatherEmoji(condition: WeatherCondition): String {
-    return when (condition) {
-        WeatherCondition.CLEAR -> "☀️"
-        WeatherCondition.CLOUDS -> "☁️"
-        WeatherCondition.RAIN -> "🌧️"
-        WeatherCondition.DRIZZLE -> "🌦️"
-        WeatherCondition.THUNDERSTORM -> "⛈️"
-        WeatherCondition.SNOW -> "❄️"
-        WeatherCondition.MIST, WeatherCondition.FOG -> "🌫️"
-        else -> "🌤️"
-    }
-}
 
 @Preview
 @Composable

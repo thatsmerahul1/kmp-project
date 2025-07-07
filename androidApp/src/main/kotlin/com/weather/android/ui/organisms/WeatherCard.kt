@@ -38,11 +38,15 @@ fun WeatherCard(
             ),
         shape = AtomicDesignSystem.shapes.WeatherCard,
         colors = CardDefaults.cardColors(
-            containerColor = AtomicDesignSystem.colors.Surface,
+            containerColor = AtomicDesignSystem.colors.WeatherCardBackground,
             contentColor = AtomicDesignSystem.colors.OnSurface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = AtomicDesignSystem.spacing.XS
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = AtomicDesignSystem.spacing.BorderWidthThin,
+            color = AtomicDesignSystem.colors.Outline.copy(alpha = 0.2f)
         )
     ) {
         WeatherSummary(
@@ -71,11 +75,15 @@ fun CompactWeatherCard(
             ),
         shape = AtomicDesignSystem.shapes.WeatherCard,
         colors = CardDefaults.cardColors(
-            containerColor = AtomicDesignSystem.colors.SurfaceVariant,
+            containerColor = AtomicDesignSystem.colors.WeatherCardBackground,
             contentColor = AtomicDesignSystem.colors.OnSurface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = AtomicDesignSystem.spacing.XS / 2
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = AtomicDesignSystem.spacing.BorderWidthThin,
+            color = AtomicDesignSystem.colors.Outline.copy(alpha = 0.15f)
         )
     ) {
         WeatherSummary(

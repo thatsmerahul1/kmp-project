@@ -38,6 +38,10 @@ struct WeatherRowView: View {
                 Text("\(Int(weather.temperatureLow))°")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                
+                Text("\(weather.humidity)%")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.vertical, 8)
