@@ -1,7 +1,7 @@
 package com.weather.testing
 
-import com.weather.domain.common.Result
-import com.weather.domain.model.*
+import com.weather.domain.model.Weather
+import com.weather.domain.model.WeatherCondition
 import com.weather.security.*
 import com.weather.monitoring.*
 import com.weather.features.*
@@ -23,68 +23,31 @@ import kotlin.random.Random
 /**
  * Weather domain model builders
  */
-class WeatherInfoBuilder {
-    private var temperature: Double = 20.0
-    private var humidity: Double = 65.0
-    private var windSpeed: Double = 5.5
-    private var windDirection: Double = 180.0
-    private var pressure: Double = 1013.25
-    private var visibility: Double = 10.0
-    private var uvIndex: Double = 3.0
-    private var cloudCover: Double = 30.0
-    private var condition: String = "Partly Cloudy"
-    private var location: String = "Test City"
-    private var timestamp: Instant = Clock.System.now()
+class WeatherBuilder {
+    private var date: kotlinx.datetime.LocalDate = kotlinx.datetime.LocalDate(2025, 1, 15)
+    private var condition: WeatherCondition = WeatherCondition.CLEAR
+    private var temperatureHigh: Double = 25.0
+    private var temperatureLow: Double = 15.0
+    private var humidity: Int = 65
+    private var icon: String = "01d"
+    private var description: String = "Clear sky"
     
-    fun temperature(value: Double) = apply { temperature = value }
-    fun humidity(value: Double) = apply { humidity = value }
-    fun windSpeed(value: Double) = apply { windSpeed = value }
-    fun windDirection(value: Double) = apply { windDirection = value }
-    fun pressure(value: Double) = apply { pressure = value }
-    fun visibility(value: Double) = apply { visibility = value }
-    fun uvIndex(value: Double) = apply { uvIndex = value }
-    fun cloudCover(value: Double) = apply { cloudCover = value }
-    fun condition(value: String) = apply { condition = value }
-    fun location(value: String) = apply { location = value }
-    fun timestamp(value: Instant) = apply { timestamp = value }
+    fun date(value: kotlinx.datetime.LocalDate) = apply { date = value }
+    fun condition(value: WeatherCondition) = apply { condition = value }
+    fun temperatureHigh(value: Double) = apply { temperatureHigh = value }
+    fun temperatureLow(value: Double) = apply { temperatureLow = value }
+    fun humidity(value: Int) = apply { humidity = value }
+    fun icon(value: String) = apply { icon = value }
+    fun description(value: String) = apply { description = value }
     
-    fun build() = WeatherInfo(
-        temperature = temperature,
-        humidity = humidity,
-        windSpeed = windSpeed,
-        windDirection = windDirection,
-        pressure = pressure,
-        visibility = visibility,
-        uvIndex = uvIndex,
-        cloudCover = cloudCover,
+    fun build() = Weather(
+        date = date,
         condition = condition,
-        location = location,
-        timestamp = timestamp
-    )
-}
-
-class LocationBuilder {
-    private var name: String = "Test City"
-    private var country: String = "Test Country"
-    private var region: String = "Test Region"
-    private var latitude: Double = 40.7128
-    private var longitude: Double = -74.0060
-    private var timezone: String = "America/New_York"
-    
-    fun name(value: String) = apply { name = value }
-    fun country(value: String) = apply { country = value }
-    fun region(value: String) = apply { region = value }
-    fun latitude(value: Double) = apply { latitude = value }
-    fun longitude(value: Double) = apply { longitude = value }
-    fun timezone(value: String) = apply { timezone = value }
-    
-    fun build() = Location(
-        name = name,
-        country = country,
-        region = region,
-        latitude = latitude,
-        longitude = longitude,
-        timezone = timezone
+        temperatureHigh = temperatureHigh,
+        temperatureLow = temperatureLow,
+        humidity = humidity,
+        icon = icon,
+        description = description
     )
 }
 
@@ -404,9 +367,9 @@ class FeatureConfigurationBuilder {
  * Result builders for testing success/error scenarios
  */
 class ResultBuilder<T> {
-    fun success(data: T) = Result.Success(data)
-    fun error(exception: Exception) = Result.Error(exception.toDomainException())
-    fun loading() = Result.Loading
+    fun success(data: T) = com.weather.domain.common.Result.Success(data)
+    fun error(exception: Exception) = com.weather.domain.common.Result.Error(exception.toDomainException())
+    fun loading() = com.weather.domain.common.Result.Loading
 }
 
 /**
@@ -414,8 +377,7 @@ class ResultBuilder<T> {
  */
 
 // Weather domain
-fun aWeatherInfo(): WeatherInfoBuilder = WeatherInfoBuilder()
-fun aLocation(): LocationBuilder = LocationBuilder()
+fun aWeather(): WeatherBuilder = WeatherBuilder()
 
 // Security domain
 fun anEncryptionConfig(): EncryptionConfigBuilder = EncryptionConfigBuilder()
@@ -440,17 +402,11 @@ fun <T> aResult(): ResultBuilder<T> = ResultBuilder()
  */
 object TestDataGenerators {
     
-    fun randomWeatherInfo(): WeatherInfo = aWeatherInfo()
-        .temperature(Random.nextDouble(-50.0, 50.0))
-        .humidity(Random.nextDouble(0.0, 100.0))
-        .windSpeed(Random.nextDouble(0.0, 50.0))
-        .pressure(Random.nextDouble(980.0, 1040.0))
-        .build()
-    
-    fun randomLocation(): Location = aLocation()
-        .name("City${Random.nextInt(1, 1000)}")
-        .latitude(Random.nextDouble(-90.0, 90.0))
-        .longitude(Random.nextDouble(-180.0, 180.0))
+    fun randomWeather(): Weather = aWeather()
+        .temperatureHigh(Random.nextDouble(-10.0, 50.0))
+        .temperatureLow(Random.nextDouble(-20.0, 30.0))
+        .humidity(Random.nextInt(0, 101))
+        .condition(WeatherCondition.values().random())
         .build()
     
     fun randomTelemetryMetric(): TelemetryMetric = aTelemetryMetric()
@@ -474,20 +430,20 @@ object TestDataGenerators {
  */
 object TestAssertions {
     
-    fun assertResultSuccess(result: Result<*>) {
-        check(result is Result.Success) { "Expected Result.Success but was $result" }
+    fun assertResultSuccess(result: com.weather.domain.common.Result<*>) {
+        check(result is com.weather.domain.common.Result.Success) { "Expected Result.Success but was $result" }
     }
     
-    fun assertResultError(result: Result<*>) {
-        check(result is Result.Error) { "Expected Result.Error but was $result" }
+    fun assertResultError(result: com.weather.domain.common.Result<*>) {
+        check(result is com.weather.domain.common.Result.Error) { "Expected Result.Error but was $result" }
     }
     
-    fun assertResultLoading(result: Result<*>) {
-        check(result is Result.Loading) { "Expected Result.Loading but was $result" }
+    fun assertResultLoading(result: com.weather.domain.common.Result<*>) {
+        check(result is com.weather.domain.common.Result.Loading) { "Expected Result.Loading but was $result" }
     }
     
-    fun <T> assertResultSuccessData(result: Result<T>, expectedData: T) {
-        check(result is Result.Success && result.data == expectedData) {
+    fun <T> assertResultSuccessData(result: com.weather.domain.common.Result<T>, expectedData: T) {
+        check(result is com.weather.domain.common.Result.Success && result.data == expectedData) {
             "Expected Result.Success($expectedData) but was $result"
         }
     }
