@@ -5,6 +5,8 @@ import com.weather.data.local.preferences.AppPreferences
 import com.weather.data.remote.RemoteWeatherDataSource
 import com.weather.domain.model.Weather
 import com.weather.domain.repository.WeatherRepository
+import com.weather.domain.common.Result
+import com.weather.domain.common.DomainException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -21,7 +23,7 @@ class WeatherRepositoryImpl(
             // 1. First, emit cached data if available
             val cachedData = localDataSource.getWeatherForecasts()
             if (cachedData.isNotEmpty()) {
-                emit(Result.success(cachedData))
+                emit(Result.Success(cachedData))
             }
             
             // 2. Check if cache is valid, but always try to fetch fresh data
@@ -39,17 +41,17 @@ class WeatherRepositoryImpl(
                 // 5. Emit updated data from the database
                 val updatedCache = localDataSource.getWeatherForecasts()
                 if (!isCacheValid || updatedCache != cachedData) {
-                    emit(Result.success(updatedCache))
+                    emit(Result.Success(updatedCache))
                 }
             } catch (networkException: Exception) {
                 // 6. If network fails and we have no cached data, emit error
                 if (cachedData.isEmpty()) {
-                    emit(Result.failure(networkException))
+                    emit(Result.Error(DomainException.Network.Generic(networkException.message ?: "Network error")))
                 }
                 // If we have cached data, we already emitted it above, so we don't emit error
             }
         } catch (exception: Exception) {
-            emit(Result.failure(exception))
+            emit(Result.Error(DomainException.Unknown(exception.message ?: "Unknown error")))
         }
     }
 
@@ -61,9 +63,9 @@ class WeatherRepositoryImpl(
             localDataSource.saveWeatherForecasts(freshData)
 
             // Return refreshed data from the local source
-            Result.success(localDataSource.getWeatherForecasts())
+            Result.Success(localDataSource.getWeatherForecasts())
         } catch (exception: Exception) {
-            Result.failure(exception)
+            Result.Error(DomainException.Network.Generic(exception.message ?: "Refresh failed"))
         }
     }
 

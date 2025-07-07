@@ -38,4 +38,8 @@ object AtomicSpacing {
     // Touch target sizes (minimum 48dp for accessibility)
     val MinTouchTarget = 48.dp
     val TouchTargetPadding = 12.dp
+    
+    // Border and divider sizes
+    val BorderWidth = 1.dp
+    val DividerWidth = 1.dp
 }

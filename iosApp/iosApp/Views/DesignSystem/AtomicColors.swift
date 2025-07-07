@@ -14,6 +14,16 @@ extension Color {
     static let atomicSurface = Color(red: 0.98, green: 0.98, blue: 0.98) // #FAFAFA
     static let atomicOnSurface = Color(red: 0.129, green: 0.129, blue: 0.129) // #212121
     static let atomicSurfaceVariant = Color(red: 0.961, green: 0.961, blue: 0.961) // #F5F5F5
+    static let atomicOnSurfaceVariant = Color(red: 0.459, green: 0.459, blue: 0.459) // #757575
+    static let atomicSurfaceContainer = Color(red: 0.953, green: 0.953, blue: 0.953) // #F3F3F3
+    
+    // MARK: - Secondary Colors
+    static let atomicSecondary = Color(red: 0.012, green: 0.855, blue: 0.776) // #03DAC6
+    static let atomicSecondaryContainer = Color(red: 0.302, green: 0.8, blue: 0.639) // #4ECCA3
+    static let atomicOnSecondaryContainer = Color(red: 0.0, green: 0.216, blue: 0.208) // #003735
+    
+    // MARK: - Border Colors
+    static let atomicOutline = Color(red: 0.792, green: 0.769, blue: 0.816) // #CAC4D0
     
     // MARK: - Semantic Colors
     static let atomicSuccess = Color(red: 0.298, green: 0.686, blue: 0.314) // #4CAF50

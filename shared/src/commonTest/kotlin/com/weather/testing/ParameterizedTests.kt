@@ -394,4 +394,253 @@ object TestExecutionHelpers {
     ): T = kotlinx.coroutines.withTimeout(timeoutMs) {
         action()
     }
+    
+    /**
+     * Run stress test with configurable load
+     */
+    suspend fun <T> runStressTest(
+        iterations: Int,
+        concurrency: Int = 1,
+        action: suspend (iteration: Int) -> T
+    ): List<T> {
+        val results = mutableListOf<T>()
+        
+        if (concurrency == 1) {
+            repeat(iterations) { iteration ->
+                results.add(action(iteration))
+            }
+        } else {
+            // For now, run sequentially in common code
+            // Platform-specific implementations can override with true concurrency
+            repeat(iterations) { iteration ->
+                results.add(action(iteration))
+            }
+        }
+        
+        return results
+    }
+    
+    /**
+     * Benchmark a test action and return statistics
+     */
+    suspend fun <T> benchmark(
+        warmupIterations: Int = 5,
+        measurementIterations: Int = 10,
+        action: suspend () -> T
+    ): BenchmarkResult<T> {
+        // Warmup
+        repeat(warmupIterations) {
+            action()
+        }
+        
+        // Measure
+        val measurements = mutableListOf<Long>()
+        var lastResult: T? = null
+        
+        repeat(measurementIterations) {
+            val (result, duration) = measureTime { action() }
+            measurements.add(duration)
+            lastResult = result
+        }
+        
+        return BenchmarkResult(
+            result = lastResult!!,
+            measurements = measurements,
+            averageMs = measurements.average(),
+            minMs = measurements.minOrNull() ?: 0L,
+            maxMs = measurements.maxOrNull() ?: 0L,
+            standardDeviation = calculateStandardDeviation(measurements)
+        )
+    }
+    
+    private fun calculateStandardDeviation(values: List<Long>): Double {
+        val mean = values.average()
+        val variance = values.map { (it - mean) * (it - mean) }.average()
+        return kotlin.math.sqrt(variance)
+    }
+}
+
+/**
+ * Benchmark result data class
+ */
+data class BenchmarkResult<T>(
+    val result: T,
+    val measurements: List<Long>,
+    val averageMs: Double,
+    val minMs: Long,
+    val maxMs: Long,
+    val standardDeviation: Double
+)
+
+/**
+ * Advanced test matchers for complex assertions
+ */
+object TestMatchers {
+    
+    /**
+     * Assert that a collection satisfies all predicates
+     */
+    fun <T> assertAllSatisfy(
+        collection: Collection<T>,
+        predicate: (T) -> Boolean,
+        message: String = "Not all elements satisfy the predicate"
+    ) {
+        assertTrue(collection.all(predicate), message)
+    }
+    
+    /**
+     * Assert that a collection satisfies any predicate
+     */
+    fun <T> assertAnySatisfy(
+        collection: Collection<T>,
+        predicate: (T) -> Boolean,
+        message: String = "No elements satisfy the predicate"
+    ) {
+        assertTrue(collection.any(predicate), message)
+    }
+    
+    /**
+     * Assert that a value is within a range
+     */
+    fun <T : Comparable<T>> assertWithinRange(
+        value: T,
+        min: T,
+        max: T,
+        message: String = "Value $value is not within range [$min, $max]"
+    ) {
+        assertTrue(value >= min && value <= max, message)
+    }
+    
+    /**
+     * Assert that a double value is approximately equal
+     */
+    fun assertApproximately(
+        actual: Double,
+        expected: Double,
+        tolerance: Double = 0.001,
+        message: String = "Values are not approximately equal"
+    ) {
+        assertTrue(
+            kotlin.math.abs(actual - expected) <= tolerance,
+            "$message. Expected: $expected, Actual: $actual, Tolerance: $tolerance"
+        )
+    }
+    
+    /**
+     * Assert that an operation completes within time limit
+     */
+    suspend fun assertCompletesWithin(
+        timeoutMs: Long,
+        message: String = "Operation did not complete within time limit",
+        action: suspend () -> Unit
+    ) {
+        try {
+            kotlinx.coroutines.withTimeout(timeoutMs) {
+                action()
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            throw AssertionError("$message (timeout: ${timeoutMs}ms)")
+        }
+    }
+}
+
+/**
+ * Data-driven test builders for complex test scenarios
+ */
+object TestBuilders {
+    
+    /**
+     * Build a test matrix from multiple parameter sets
+     */
+    fun <T1, T2> buildTestMatrix(
+        param1Values: List<T1>,
+        param2Values: List<T2>
+    ): List<TestCase<Pair<T1, T2>>> {
+        return param1Values.flatMap { p1 ->
+            param2Values.map { p2 ->
+                TestCase(
+                    name = "Test with ($p1, $p2)",
+                    input = Pair(p1, p2),
+                    description = "Parameterized test case for values ($p1, $p2)"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Build a test matrix from three parameter sets
+     */
+    fun <T1, T2, T3> buildTestMatrix(
+        param1Values: List<T1>,
+        param2Values: List<T2>,
+        param3Values: List<T3>
+    ): List<TestCase<Triple<T1, T2, T3>>> {
+        return param1Values.flatMap { p1 ->
+            param2Values.flatMap { p2 ->
+                param3Values.map { p3 ->
+                    TestCase(
+                        name = "Test with ($p1, $p2, $p3)",
+                        input = Triple(p1, p2, p3),
+                        description = "Parameterized test case for values ($p1, $p2, $p3)"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Build edge case test scenarios
+     */
+    fun <T> buildEdgeCases(
+        normalValue: T,
+        edgeValues: List<T>,
+        testName: String = "Edge Case Test"
+    ): List<TestCase<T>> {
+        return listOf(
+            TestCase(
+                name = "$testName - Normal Value",
+                input = normalValue,
+                description = "Normal case test"
+            )
+        ) + edgeValues.mapIndexed { index, value ->
+            TestCase(
+                name = "$testName - Edge Case ${index + 1}",
+                input = value,
+                description = "Edge case test with value: $value"
+            )
+        }
+    }
+}
+
+/**
+ * Test data validators for ensuring test quality
+ */
+object TestValidators {
+    
+    /**
+     * Validate that test cases have unique names
+     */
+    fun <T> validateUniqueTestNames(testCases: List<TestCase<T>>): Boolean {
+        val names = testCases.map { it.name }
+        return names.size == names.distinct().size
+    }
+    
+    /**
+     * Validate that test scenarios have consistent tag usage
+     */
+    fun <TInput, TExpected> validateTagConsistency(
+        scenarios: List<TestScenario<TInput, TExpected>>
+    ): Boolean {
+        val allTags = scenarios.flatMap { it.tags }.distinct()
+        return allTags.isNotEmpty() && scenarios.all { it.tags.isNotEmpty() }
+    }
+    
+    /**
+     * Validate that property test configuration is reasonable
+     */
+    fun validatePropertyTestConfig(config: PropertyTestConfig): Boolean {
+        return config.iterations > 0 &&
+                config.maxShrinkAttempts > 0 &&
+                (config.seed == null || config.seed!! > 0)
+    }
 }

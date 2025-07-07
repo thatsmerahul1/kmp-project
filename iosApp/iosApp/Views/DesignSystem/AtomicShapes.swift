@@ -17,10 +17,26 @@ struct AtomicShapes {
     
     // MARK: - Component Specific Shapes
     static let button = sm          // Button corner radius
+    static let buttonLarge = md     // Large button corner radius
     static let card = md           // Card corner radius
+    static let cardElevated = lg   // Elevated card corner radius
     static let chip = full         // Chip/Tag corner radius
     static let dialog = lg         // Dialog/Modal corner radius
     static let sheet = xl          // Bottom sheet corner radius (top corners only)
+    
+    // MARK: - Input Shapes
+    static let textField = sm      // Text field corner radius
+    static let inputField = sm     // Input field corner radius
+    static let searchField = CGFloat(24)  // Search field corner radius
+    static let searchBar = CGFloat(24)    // Search bar corner radius
+    
+    // MARK: - Weather Specific Shapes
+    static let weatherCard = md    // Weather card corner radius
+    static let weatherIcon = sm    // Weather icon corner radius
+    static let temperatureDisplay = sm  // Temperature display corner radius
+    
+    // MARK: - Navigation Shapes
+    static let navigationDrawerItem = sm  // Navigation drawer item corner radius
     
     // MARK: - Border Widths
     static let borderThin: CGFloat = 0.5

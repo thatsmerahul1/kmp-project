@@ -30,6 +30,8 @@ object AtomicShapes {
     
     // Input shapes
     val TextField = SM
+    val InputField = SM
+    val SearchField = RoundedCornerShape(24.dp)
     val SearchBar = RoundedCornerShape(24.dp)
     
     // Navigation shapes
@@ -53,4 +55,7 @@ object AtomicShapes {
         bottomStart = 16.dp,
         bottomEnd = 16.dp
     )
+    
+    // Navigation component shapes
+    val NavigationDrawerItem = SM
 }

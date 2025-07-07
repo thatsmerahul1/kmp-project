@@ -23,9 +23,22 @@ struct AtomicSpacing {
     
     // MARK: - Component Specific Spacing
     static let buttonPadding = CGFloat(12)
+    static let buttonHeight = CGFloat(48)
     static let cardPadding = md
     static let listItemPadding = md
     static let iconSpacing = xs
+    static let iconSize = CGFloat(24)
+    static let iconSizeMedium = CGFloat(32)
+    static let iconSizeLarge = CGFloat(48)
+    static let iconSizeXL = CGFloat(64)
+    
+    // MARK: - Border and Divider Sizes
+    static let borderWidth = CGFloat(1)
+    static let dividerWidth = CGFloat(1)
+    
+    // MARK: - Touch Target Sizes
+    static let minTouchTarget = CGFloat(48)
+    static let touchTargetPadding = CGFloat(12)
     
     // MARK: - Grid System
     static let gridGutter = md

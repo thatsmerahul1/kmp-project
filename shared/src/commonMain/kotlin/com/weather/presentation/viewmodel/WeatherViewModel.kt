@@ -2,6 +2,7 @@ package com.weather.presentation.viewmodel
 
 import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
+import com.weather.domain.common.Result
 import com.weather.presentation.state.WeatherUiEvent
 import com.weather.presentation.state.WeatherUiState
 import kotlinx.coroutines.CoroutineScope
@@ -56,24 +57,30 @@ class WeatherViewModel(
                     )
                 }
                 .collect { result ->
-                    result.fold(
-                        onSuccess = { weatherList ->
+                    when (result) {
+                        is Result.Success -> {
                             _uiState.value = _uiState.value.copy(
-                                weatherList = weatherList,
+                                weatherList = result.data,
                                 isLoading = false,
                                 error = null,
                                 lastUpdated = Clock.System.now(),
                                 isOffline = false
                             )
-                        },
-                        onFailure = { exception ->
+                        }
+                        is Result.Error -> {
                             _uiState.value = _uiState.value.copy(
                                 isLoading = false,
-                                error = exception.message ?: "Unknown error occurred",
+                                error = result.exception.message ?: "Unknown error occurred",
                                 isOffline = true
                             )
                         }
-                    )
+                        is Result.Loading -> {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = true,
+                                error = null
+                            )
+                        }
+                    }
                 }
         }
     }
@@ -86,23 +93,26 @@ class WeatherViewModel(
             )
             
             val result = refreshWeatherUseCase()
-            result.fold(
-                onSuccess = { weatherList ->
+            when (result) {
+                is Result.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        weatherList = weatherList,
+                        weatherList = result.data,
                         isRefreshing = false,
                         lastUpdated = Clock.System.now(),
                         isOffline = false
                     )
-                },
-                onFailure = { exception ->
+                }
+                is Result.Error -> {
                     _uiState.value = _uiState.value.copy(
                         isRefreshing = false,
-                        error = exception.message ?: "Failed to refresh weather data",
+                        error = result.exception.message ?: "Failed to refresh weather data",
                         isOffline = true
                     )
                 }
-            )
+                is Result.Loading -> {
+                    // Already in refreshing state, no additional action needed
+                }
+            }
         }
     }
 

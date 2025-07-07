@@ -1,6 +1,7 @@
 package com.weather.domain.repository
 
 import com.weather.domain.model.Weather
+import com.weather.domain.common.Result
 import kotlinx.coroutines.flow.Flow
 
 interface WeatherRepository {

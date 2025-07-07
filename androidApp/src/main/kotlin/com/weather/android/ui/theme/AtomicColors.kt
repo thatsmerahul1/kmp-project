@@ -13,6 +13,12 @@ object AtomicColors {
     val OnSurface = Color(0xFF212121)
     val SurfaceVariant = Color(0xFFF5F5F5)
     val OnSurfaceVariant = Color(0xFF757575)
+    val SurfaceContainer = Color(0xFFF3F3F3)
+    
+    // Secondary Colors
+    val Secondary = Color(0xFF03DAC6)
+    val SecondaryContainer = Color(0xFF4ECCA3)
+    val OnSecondaryContainer = Color(0xFF003735)
     
     // Background Colors
     val Background = Color.White
@@ -24,6 +30,7 @@ object AtomicColors {
     val Error = Color(0xFFF44336)
     val Info = Color(0xFF2196F3)
     val OnError = Color.White
+    val Outline = Color(0xFFCAC4D0)
     
     // Weather Specific Colors
     val Sunny = Color(0xFFFFD54F)
