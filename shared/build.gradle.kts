@@ -53,6 +53,9 @@ kotlin {
             implementation(libs.turbine)
         }
         
+        // Android-specific test dependencies would go here
+        // Note: Android test source sets need to be properly configured for KMP
+        
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
@@ -127,4 +130,23 @@ tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>().configureEach {
 tasks.register("dokkaHtmlMultiModule", org.jetbrains.dokka.gradle.DokkaMultiModuleTask::class) {
     outputDirectory.set(file("${buildDir}/dokka/htmlMultiModule"))
     moduleName.set("WeatherKMP Shared")
+}
+
+// Enhanced Kover configuration for 2025 standards
+tasks.register("generateCoverageBadges") {
+    group = "verification"
+    description = "Generate coverage badges from Kover XML reports"
+    dependsOn("koverXmlReport")
+    
+    doLast {
+        exec {
+            commandLine("bash", "../scripts/generate-coverage-badges.sh", "--skip-tests")
+        }
+    }
+}
+
+tasks.named("koverXmlReport") {
+    doLast {
+        println("📊 Coverage report generated")
+    }
 }

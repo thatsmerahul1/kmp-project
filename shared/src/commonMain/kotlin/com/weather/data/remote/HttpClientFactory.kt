@@ -1,5 +1,6 @@
 package com.weather.data.remote
 
+import com.weather.security.CertificatePinningPlugin
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.UserAgent
@@ -12,11 +13,11 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 /**
- * Basic HTTP client factory
+ * Enhanced HTTP client factory with 2025 security standards
  */
 object HttpClientFactory {
     
-    fun create(): HttpClient {
+    fun create(enableSecurity: Boolean = true): HttpClient {
         return HttpClient {
             // Content negotiation with JSON parsing
             install(ContentNegotiation) {
@@ -27,10 +28,19 @@ object HttpClientFactory {
                 })
             }
             
-            // Basic logging
+            // Security-aware logging
             install(Logging) {
                 logger = Logger.SIMPLE
                 level = LogLevel.INFO
+                sanitizeHeader { name ->
+                    when {
+                        name.equals("Authorization", ignoreCase = true) -> true
+                        name.equals("Cookie", ignoreCase = true) -> true
+                        name.equals("Set-Cookie", ignoreCase = true) -> true
+                        name.equals("X-API-Key", ignoreCase = true) -> true
+                        else -> false
+                    }
+                }
             }
             
             // Timeout configuration
@@ -44,13 +54,18 @@ object HttpClientFactory {
             install(UserAgent) {
                 agent = "WeatherKMP/2025.1 (Kotlin Multiplatform)"
             }
+            
+            // Certificate pinning for production security
+            if (enableSecurity) {
+                install(CertificatePinningPlugin)
+            }
         }
     }
     
     /**
-     * Create a client for testing
+     * Create a client for testing (without security features)
      */
     fun createForTesting(): HttpClient {
-        return create()
+        return create(enableSecurity = false)
     }
 }

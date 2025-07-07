@@ -1,0 +1,130 @@
+# Coverage Badge Configuration for WeatherKMP 2025
+# 
+# This configuration file allows customization of coverage badge generation
+# without modifying the main script.
+
+# Coverage thresholds (0-100)
+thresholds:
+  excellent: 90    # Bright green badges
+  good: 80         # Green badges  
+  moderate: 70     # Yellow badges
+  poor: 60         # Orange badges
+  # Below poor threshold gets red badges
+
+# Badge styling
+styling:
+  style: "flat-square"  # Options: flat, flat-square, plastic, for-the-badge
+  logo: "kotlin"        # Shield.io logo name or custom logo URL
+  logoColor: "white"    # Logo color
+  labelColor: "555"     # Label background color
+
+# Platform configuration
+platforms:
+  android:
+    enabled: true
+    display_name: "Android"
+    test_source_set: "androidTest"
+    
+  common:
+    enabled: true  
+    display_name: "Common"
+    test_source_set: "commonTest"
+    
+  ios:
+    enabled: true
+    display_name: "iOS" 
+    test_source_set: "iosTest"
+
+# Coverage types to generate badges for
+coverage_types:
+  line:
+    enabled: true
+    display_name: "Line"
+    description: "Lines of code covered by tests"
+    
+  branch:
+    enabled: true
+    display_name: "Branch"
+    description: "Conditional branches covered by tests"
+    
+  instruction:
+    enabled: true
+    display_name: "Instruction"
+    description: "Bytecode instructions covered by tests"
+
+# Report paths (relative to project root)
+paths:
+  coverage_reports: "shared/build/reports/kover"
+  badge_output: ".github/badges"
+  readme_path: "README.md"
+  
+# GitHub integration
+github:
+  enable_workflow: true
+  enable_auto_commit: true
+  commit_message: "Update coverage badges 🎯"
+  
+  # Badge hosting options
+  hosting:
+    use_github_pages: false     # Host badges on GitHub Pages
+    use_shields_io: true        # Generate badges via shields.io
+    use_custom_endpoint: false  # Use custom badge generation service
+
+# Validation rules
+validation:
+  fail_on_threshold: false      # Fail CI if coverage below threshold
+  minimum_overall_coverage: 70  # Minimum acceptable overall coverage
+  warn_on_decrease: true        # Warn if coverage decreases
+  
+  # Quality gates
+  quality_gates:
+    line_coverage_minimum: 80
+    branch_coverage_minimum: 75
+    instruction_coverage_minimum: 80
+
+# Notifications
+notifications:
+  slack:
+    enabled: false
+    webhook_url: ""
+    channel: "#development"
+    
+  email:
+    enabled: false
+    recipients: []
+    
+  teams:
+    enabled: false
+    webhook_url: ""
+
+# Advanced options
+advanced:
+  # Custom badge templates
+  badge_templates:
+    overall: "coverage-{type}"
+    platform: "coverage-{platform}-{type}"
+    
+  # Coverage report parsing
+  xml_parsing:
+    use_xmllint: true          # Use xmllint if available
+    fallback_to_grep: true     # Fallback to grep parsing
+    
+  # Performance optimization  
+  parallel_badge_generation: true
+  cache_badge_requests: true
+  request_timeout: 30
+
+# Documentation integration
+documentation:
+  generate_coverage_report: true
+  include_in_readme: true
+  coverage_section_title: "📊 Coverage Badges"
+  
+  # Additional documentation
+  generate_coverage_trends: false
+  coverage_history_length: 30  # Keep last 30 coverage reports
+  
+  # Dokka integration
+  dokka:
+    include_coverage_info: true
+    coverage_annotation: true
