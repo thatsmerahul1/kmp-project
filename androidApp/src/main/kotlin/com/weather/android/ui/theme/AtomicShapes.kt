@@ -14,8 +14,8 @@ object AtomicShapes {
     val XXL = RoundedCornerShape(32.dp)
     
     // Component specific shapes
-    val Button = SM
-    val ButtonLarge = MD
+    val Button = XL      // Updated to 24dp for modern look
+    val ButtonLarge = XL
     val Card = MD
     val CardElevated = LG
     val Sheet = LG
@@ -24,7 +24,7 @@ object AtomicShapes {
     val Badge = RoundedCornerShape(12.dp)
     
     // Weather specific shapes
-    val WeatherCard = MD
+    val WeatherCard = LG  // Updated to 16dp for modern look
     val WeatherIcon = SM
     val TemperatureDisplay = SM
     

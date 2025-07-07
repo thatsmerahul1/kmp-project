@@ -39,19 +39,19 @@ fun WeatherSummary(
             if (showDate) {
                 BodyText(
                     text = formatDate(weather.date),
-                    color = AtomicDesignSystem.colors.Primary
+                    color = AtomicDesignSystem.colors.OnSurface
                 )
             }
             CaptionText(
                 text = weather.description.replaceFirstChar { 
                     if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
                 },
-                color = AtomicDesignSystem.colors.OnSurfaceVariant
+                color = AtomicDesignSystem.colors.OnSurface.copy(alpha = 0.8f)
             )
             if (showHumidity) {
                 CaptionText(
                     text = "Humidity ${weather.humidity}%",
-                    color = AtomicDesignSystem.colors.OnSurfaceVariant
+                    color = AtomicDesignSystem.colors.OnSurface.copy(alpha = 0.7f)
                 )
             }
         }

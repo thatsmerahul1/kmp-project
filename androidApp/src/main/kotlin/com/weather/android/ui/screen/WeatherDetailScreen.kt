@@ -1,5 +1,6 @@
 package com.weather.android.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,10 +25,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.weather.android.util.WeatherUtils
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import kotlinx.datetime.LocalDate
@@ -86,9 +89,16 @@ fun WeatherDetailScreen(
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = Color.Transparent
                 )
             ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = WeatherUtils.getWeatherGradient(weather.condition)
+                        )
+                ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -97,7 +107,7 @@ fun WeatherDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = getWeatherEmoji(weather.condition),
+                        text = WeatherUtils.getWeatherEmoji(weather.condition),
                         style = MaterialTheme.typography.displayLarge,
                         modifier = Modifier.size(120.dp),
                         textAlign = TextAlign.Center
@@ -143,6 +153,7 @@ fun WeatherDetailScreen(
                         }
                     }
                 }
+                }
             }
             
             // Details cards
@@ -162,7 +173,7 @@ fun WeatherDetailScreen(
                     value = weather.condition.name.lowercase().replaceFirstChar { 
                         if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() 
                     },
-                    icon = getWeatherEmoji(weather.condition),
+                    icon = WeatherUtils.getWeatherEmoji(weather.condition),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -207,18 +218,6 @@ private fun DetailCard(
     }
 }
 
-private fun getWeatherEmoji(condition: WeatherCondition): String {
-    return when (condition) {
-        WeatherCondition.CLEAR -> "☀️"
-        WeatherCondition.CLOUDS -> "☁️"
-        WeatherCondition.RAIN -> "🌧️"
-        WeatherCondition.DRIZZLE -> "🌦️"
-        WeatherCondition.THUNDERSTORM -> "⛈️"
-        WeatherCondition.SNOW -> "❄️"
-        WeatherCondition.MIST, WeatherCondition.FOG -> "🌫️"
-        else -> "🌤️"
-    }
-}
 
 private fun formatDate(date: LocalDate): String {
     return "${date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}, ${date.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${date.dayOfMonth}"
