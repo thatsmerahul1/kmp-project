@@ -89,3 +89,11 @@ yarn-error.log*
 *.rar
 *.tar
 *.zip
+
+# Code Coverage Reports
+**/build/reports/kover/
+**/build/reports/tests/
+**/build/reports/jacoco/
+coverage/
+*.exec
+*.ec

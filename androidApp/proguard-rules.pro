@@ -88,8 +88,16 @@
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.content.ContentProvider
 
-# Remove logging in release builds
+# Remove logging in release builds - Enhanced for 2025
 -assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** w(...);
+}
+
+# Remove custom logger calls in release
+-assumenosideeffects class com.weather.domain.common.AppLogger {
     public static *** d(...);
     public static *** v(...);
     public static *** i(...);
@@ -99,4 +107,68 @@
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
+}
+
+# 2025 R8 Optimizations
+# Aggressive optimization settings
+-optimizations !code/simplification/arithmetic,!field/*,!class/merging/*,!code/allocation/variable
+-optimizationpasses 5
+-allowaccessmodification
+-repackageclasses ''
+
+# Remove unused code more aggressively
+-dontwarn javax.annotation.**
+-dontwarn org.checkerframework.**
+-dontwarn org.codehaus.mojo.animal_sniffer.**
+
+# Optimize for size and performance
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# Enhanced R8 full mode optimizations
+-allowaccessmodification
+-dontskipnonpubliclibraryclasses
+-dontskipnonpubliclibraryclassmembers
+
+# Kotlin optimization improvements
+-keepclassmembers class kotlin.Metadata {
+    public <methods>;
+}
+
+# Enhanced Compose optimizations
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.foundation.** { *; }
+-keepclassmembers class androidx.compose.** {
+    <init>(...);
+}
+
+# Navigation component optimizations
+-keep class androidx.navigation.** { *; }
+-keepclassmembers class androidx.navigation.** {
+    <init>(...);
+}
+
+# Performance optimization for reflection
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
+
+# Memory optimization
+-optimizations !code/simplification/cast,!field/*,!class/merging/*
+
+# Network optimization
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+
+# Weather app specific optimizations
+-keep class com.weather.domain.** { *; }
+-keep class com.weather.presentation.ui.** { *; }
+
+# Remove debug-only code
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void checkParameterIsNotNull(...);
+    public static void checkNotNullParameter(...);
+    public static void checkReturnedValueIsNotNull(...);
 }

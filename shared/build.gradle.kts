@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.dokka)
 }
 
 kotlin {
@@ -55,6 +57,10 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
             implementation(libs.koin.android)
+            
+            // Android Security
+            implementation("androidx.security:security-crypto:1.1.0-alpha06")
+            implementation("androidx.biometric:biometric:1.1.0")
         }
         
         iosMain.dependencies {
@@ -82,4 +88,43 @@ sqldelight {
             packageName.set("com.weather.database")
         }
     }
+}
+
+// Dokka configuration for API documentation
+tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>().configureEach {
+    dokkaSourceSets {
+        configureEach {
+            // Include all source sets
+            includes.from("docs/dokka-includes.md")
+            
+            // External documentation links
+            externalDocumentationLink {
+                url.set(uri("https://kotlinlang.org/api/kotlinx.coroutines/").toURL())
+                packageListUrl.set(uri("https://kotlinlang.org/api/kotlinx.coroutines/package-list").toURL())
+            }
+            
+            externalDocumentationLink {
+                url.set(uri("https://kotlinlang.org/api/kotlinx.serialization/").toURL())
+                packageListUrl.set(uri("https://kotlinlang.org/api/kotlinx.serialization/package-list").toURL())
+            }
+            
+            externalDocumentationLink {
+                url.set(uri("https://kotlinlang.org/api/kotlinx-datetime/").toURL())
+                packageListUrl.set(uri("https://kotlinlang.org/api/kotlinx-datetime/package-list").toURL())
+            }
+            
+            // Source linking
+            sourceLink {
+                localDirectory.set(file("src/commonMain/kotlin"))
+                remoteUrl.set(uri("https://github.com/weather-kmp/weatherkmp/tree/main/shared/src/commonMain/kotlin").toURL())
+                remoteLineSuffix.set("#L")
+            }
+        }
+    }
+}
+
+// Configure specific Dokka output
+tasks.register("dokkaHtmlMultiModule", org.jetbrains.dokka.gradle.DokkaMultiModuleTask::class) {
+    outputDirectory.set(file("${buildDir}/dokka/htmlMultiModule"))
+    moduleName.set("WeatherKMP Shared")
 }

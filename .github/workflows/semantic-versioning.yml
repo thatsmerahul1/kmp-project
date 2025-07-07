@@ -1,0 +1,498 @@
+name: Semantic Versioning Automation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'zulu'
+
+jobs:
+  validate-conventional-commits:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install commitlint
+      run: |
+        npm install -g @commitlint/cli@18 @commitlint/config-conventional@18
+        
+    - name: Create commitlint config
+      run: |
+        cat > .commitlintrc.json << 'EOF'
+        {
+          "extends": ["@commitlint/config-conventional"],
+          "rules": {
+            "type-enum": [
+              2,
+              "always",
+              [
+                "feat",
+                "fix",
+                "docs",
+                "style",
+                "refactor",
+                "perf",
+                "test",
+                "chore",
+                "ci",
+                "build",
+                "revert"
+              ]
+            ],
+            "subject-case": [2, "never", ["start-case", "pascal-case", "upper-case"]],
+            "subject-empty": [2, "never"],
+            "subject-full-stop": [2, "never", "."],
+            "header-max-length": [2, "always", 100],
+            "body-leading-blank": [1, "always"],
+            "body-max-line-length": [2, "always", 100],
+            "footer-leading-blank": [1, "always"],
+            "footer-max-line-length": [2, "always", 100]
+          }
+        }
+        EOF
+        
+    - name: Validate commit messages
+      run: |
+        # Get the base branch commit
+        BASE_SHA=$(git merge-base origin/main HEAD)
+        
+        # Validate each commit message
+        git rev-list --reverse $BASE_SHA..HEAD | while read sha; do
+          echo "Validating commit: $sha"
+          git log --format=%B -n 1 $sha | npx commitlint
+        done
+        
+    - name: Check PR title format
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "${{ github.event.pull_request.title }}" | npx commitlint
+        
+  calculate-next-version:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      version: ${{ steps.calculate.outputs.next_version }}
+      changelog: ${{ steps.calculate.outputs.changelog }}
+      should_release: ${{ steps.calculate.outputs.should_release }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install semantic-release
+      run: |
+        npm install -g \
+          semantic-release@21 \
+          @semantic-release/changelog@6 \
+          @semantic-release/exec@6 \
+          @semantic-release/git@10 \
+          @semantic-release/github@9 \
+          conventional-changelog-conventionalcommits@6
+          
+    - name: Create semantic-release config
+      run: |
+        cat > .releaserc.json << 'EOF'
+        {
+          "branches": ["main"],
+          "repositoryUrl": "https://github.com/${{ github.repository }}",
+          "plugins": [
+            [
+              "@semantic-release/commit-analyzer",
+              {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  {"type": "feat", "release": "minor"},
+                  {"type": "fix", "release": "patch"},
+                  {"type": "perf", "release": "patch"},
+                  {"type": "refactor", "release": "patch"},
+                  {"type": "docs", "release": false},
+                  {"type": "test", "release": false},
+                  {"type": "ci", "release": false},
+                  {"type": "chore", "release": false},
+                  {"type": "build", "release": false},
+                  {"type": "style", "release": false},
+                  {"breaking": true, "release": "major"}
+                ]
+              }
+            ],
+            [
+              "@semantic-release/release-notes-generator",
+              {
+                "preset": "conventionalcommits",
+                "presetConfig": {
+                  "types": [
+                    {"type": "feat", "section": "🚀 Features", "hidden": false},
+                    {"type": "fix", "section": "🐛 Bug Fixes", "hidden": false},
+                    {"type": "perf", "section": "⚡ Performance Improvements", "hidden": false},
+                    {"type": "refactor", "section": "♻️ Code Refactoring", "hidden": false},
+                    {"type": "docs", "section": "📚 Documentation", "hidden": false},
+                    {"type": "test", "section": "🧪 Tests", "hidden": false},
+                    {"type": "ci", "section": "🔧 Continuous Integration", "hidden": false},
+                    {"type": "chore", "section": "🔨 Chores", "hidden": false},
+                    {"type": "build", "section": "🏗️ Build System", "hidden": false},
+                    {"type": "style", "section": "💄 Styles", "hidden": false},
+                    {"type": "revert", "section": "⏪ Reverts", "hidden": false}
+                  ]
+                }
+              }
+            ],
+            "@semantic-release/changelog",
+            [
+              "@semantic-release/exec",
+              {
+                "prepareCmd": "echo 'Next version: ${nextRelease.version}' && echo 'Release type: ${nextRelease.type}'"
+              }
+            ]
+          ]
+        }
+        EOF
+        
+    - name: Calculate next version
+      id: calculate
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Create package.json
+        cat > package.json << 'EOF'
+        {
+          "name": "weather-kmp",
+          "version": "0.0.0",
+          "description": "Weather KMP Application - 2025 Standards Compliant",
+          "private": true
+        }
+        EOF
+        
+        # Run semantic-release in dry-run mode
+        npx semantic-release --dry-run > release-output.txt 2>&1 || true
+        
+        # Check if a release should be made
+        if grep -q "There are no relevant changes" release-output.txt; then
+          echo "should_release=false" >> $GITHUB_OUTPUT
+          echo "next_version=" >> $GITHUB_OUTPUT
+          echo "changelog=" >> $GITHUB_OUTPUT
+          echo "No relevant changes found, skipping release"
+        elif grep -q "The next release version is" release-output.txt; then
+          # Extract version
+          NEXT_VERSION=$(grep -o "The next release version is [0-9]\+\.[0-9]\+\.[0-9]\+" release-output.txt | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version will be: $NEXT_VERSION"
+          
+          # Generate changelog
+          if [ -f "CHANGELOG.md" ]; then
+            CHANGELOG_CONTENT=$(head -50 CHANGELOG.md)
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "should_release=false" >> $GITHUB_OUTPUT
+          echo "next_version=" >> $GITHUB_OUTPUT
+          echo "changelog=" >> $GITHUB_OUTPUT
+          echo "Unable to determine if release is needed"
+        fi
+        
+        # Display output for debugging
+        echo "=== Semantic Release Output ==="
+        cat release-output.txt
+        echo "=== End Output ==="
+        
+  version-preview:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install semantic-release
+      run: |
+        npm install -g \
+          semantic-release@21 \
+          @semantic-release/changelog@6 \
+          @semantic-release/exec@6 \
+          conventional-changelog-conventionalcommits@6
+          
+    - name: Preview version impact
+      id: preview
+      run: |
+        # Create minimal semantic-release config
+        cat > .releaserc.json << 'EOF'
+        {
+          "branches": ["main"],
+          "plugins": [
+            [
+              "@semantic-release/commit-analyzer",
+              {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  {"type": "feat", "release": "minor"},
+                  {"type": "fix", "release": "patch"},
+                  {"type": "perf", "release": "patch"},
+                  {"type": "refactor", "release": "patch"},
+                  {"type": "docs", "release": false},
+                  {"type": "test", "release": false},
+                  {"type": "ci", "release": false},
+                  {"type": "chore", "release": false},
+                  {"breaking": true, "release": "major"}
+                ]
+              }
+            ],
+            [
+              "@semantic-release/release-notes-generator",
+              {
+                "preset": "conventionalcommits"
+              }
+            ]
+          ]
+        }
+        EOF
+        
+        # Create package.json
+        cat > package.json << 'EOF'
+        {
+          "name": "weather-kmp",
+          "version": "0.0.0",
+          "private": true
+        }
+        EOF
+        
+        # Get the base branch for comparison
+        git fetch origin main:main
+        
+        # Analyze what the version impact would be
+        echo "Analyzing version impact of this PR..."
+        npx semantic-release --dry-run --branches main > version-impact.txt 2>&1 || true
+        
+        # Extract and format the impact
+        if grep -q "The next release version is" version-impact.txt; then
+          IMPACT_VERSION=$(grep -o "The next release version is [0-9]\+\.[0-9]\+\.[0-9]\+" version-impact.txt | grep -o "[0-9]\+\.[0-9]\+\.[0-9]\+" | head -1)
+          echo "version_impact=$IMPACT_VERSION" >> $GITHUB_OUTPUT
+          
+          # Determine release type
+          if grep -q "major" version-impact.txt; then
+            echo "release_type=major" >> $GITHUB_OUTPUT
+          elif grep -q "minor" version-impact.txt; then
+            echo "release_type=minor" >> $GITHUB_OUTPUT
+          elif grep -q "patch" version-impact.txt; then
+            echo "release_type=patch" >> $GITHUB_OUTPUT
+          else
+            echo "release_type=none" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "version_impact=none" >> $GITHUB_OUTPUT
+          echo "release_type=none" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "=== Version Impact Analysis ==="
+        cat version-impact.txt
+        echo "=== End Analysis ==="
+        
+    - name: Comment version impact
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const versionImpact = '${{ steps.preview.outputs.version_impact }}';
+          const releaseType = '${{ steps.preview.outputs.release_type }}';
+          
+          let emoji = '📦';
+          let message = '';
+          
+          if (releaseType === 'major') {
+            emoji = '💥';
+            message = `This PR will trigger a **MAJOR** version release (${versionImpact})\n⚠️ This includes breaking changes!`;
+          } else if (releaseType === 'minor') {
+            emoji = '✨';
+            message = `This PR will trigger a **MINOR** version release (${versionImpact})\n🚀 This adds new features!`;
+          } else if (releaseType === 'patch') {
+            emoji = '🔧';
+            message = `This PR will trigger a **PATCH** version release (${versionImpact})\n🐛 This includes bug fixes or improvements!`;
+          } else {
+            emoji = '📋';
+            message = `This PR will **NOT** trigger a version release\n📝 Changes don't affect the public API`;
+          }
+          
+          const body = `## ${emoji} Version Impact Analysis
+          
+          ${message}
+          
+          ### 📋 Conventional Commit Guidelines
+          
+          To ensure proper version bumping, please use conventional commit format:
+          
+          - \`feat:\` for new features (minor version bump)
+          - \`fix:\` for bug fixes (patch version bump)  
+          - \`BREAKING CHANGE:\` or \`!\` for breaking changes (major version bump)
+          - \`docs:\`, \`test:\`, \`chore:\`, \`ci:\` for changes that don't affect versioning
+          
+          ### 🔗 Learn More
+          - [Conventional Commits](https://www.conventionalcommits.org/)
+          - [Semantic Versioning](https://semver.org/)
+          `;
+          
+          // Check if comment already exists
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.body.includes('Version Impact Analysis')
+          );
+          
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: body
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }
+
+  update-version-files:
+    runs-on: ubuntu-latest
+    needs: calculate-next-version
+    if: needs.calculate-next-version.outputs.should_release == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: ${{ env.JAVA_DISTRIBUTION }}
+        
+    - name: Update version in build files
+      env:
+        NEW_VERSION: ${{ needs.calculate-next-version.outputs.version }}
+      run: |
+        echo "Updating version to $NEW_VERSION"
+        
+        # Update Android app version
+        if [ -f "androidApp/build.gradle.kts" ]; then
+          # Extract version code and increment it
+          CURRENT_VERSION_CODE=$(grep -o 'versionCode = [0-9]\+' androidApp/build.gradle.kts | grep -o '[0-9]\+')
+          NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+          
+          sed -i.bak "s/versionName = \".*\"/versionName = \"$NEW_VERSION\"/" androidApp/build.gradle.kts
+          sed -i.bak "s/versionCode = [0-9]\+/versionCode = $NEW_VERSION_CODE/" androidApp/build.gradle.kts
+          
+          echo "Updated Android app version to $NEW_VERSION (code: $NEW_VERSION_CODE)"
+        fi
+        
+        # Update iOS app version
+        if [ -f "iosApp/iosApp/Info.plist" ]; then
+          # Update CFBundleShortVersionString
+          sed -i.bak "s/<string>[0-9]\+\.[0-9]\+\.[0-9]\+<\/string>/<string>$NEW_VERSION<\/string>/" iosApp/iosApp/Info.plist
+          
+          echo "Updated iOS app version to $NEW_VERSION"
+        fi
+        
+        # Update version in gradle.properties if it exists
+        if [ -f "gradle.properties" ]; then
+          if grep -q "version=" gradle.properties; then
+            sed -i.bak "s/version=.*/version=$NEW_VERSION/" gradle.properties
+          else
+            echo "version=$NEW_VERSION" >> gradle.properties
+          fi
+          
+          echo "Updated gradle.properties version to $NEW_VERSION"
+        fi
+        
+        # Create/update VERSION file
+        echo "$NEW_VERSION" > VERSION
+        echo "Created VERSION file with $NEW_VERSION"
+        
+        # Display changes
+        echo "=== Version file changes ==="
+        git diff || true
+        
+    - name: Commit version updates
+      env:
+        NEW_VERSION: ${{ needs.calculate-next-version.outputs.version }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        git add .
+        git commit -m "chore(release): bump version to $NEW_VERSION [skip ci]" || exit 0
+        git push
+        
+  tag-release:
+    runs-on: ubuntu-latest
+    needs: [calculate-next-version, update-version-files]
+    if: needs.calculate-next-version.outputs.should_release == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Create and push tag
+      env:
+        NEW_VERSION: ${{ needs.calculate-next-version.outputs.version }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Pull latest changes
+        git pull origin main
+        
+        # Create tag
+        git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+        
+        # Push tag
+        git push origin "v$NEW_VERSION"
+        
+        echo "Created and pushed tag v$NEW_VERSION"

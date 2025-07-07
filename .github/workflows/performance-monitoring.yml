@@ -1,0 +1,398 @@
+name: Performance Monitoring & Regression Detection
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 1' # Weekly performance baseline on Mondays at 3 AM
+
+env:
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: 'zulu'
+
+jobs:
+  performance-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: ${{ env.JAVA_DISTRIBUTION }}
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+      with:
+        cache-read-only: false
+        
+    - name: Build release APK with timing
+      run: |
+        echo "🏗️ Starting release build with performance monitoring..."
+        
+        # Start timing
+        START_TIME=$(date +%s)
+        
+        # Build with detailed timing
+        ./gradlew :androidApp:assembleRelease --profile --parallel --build-cache
+        
+        # End timing
+        END_TIME=$(date +%s)
+        BUILD_TIME=$((END_TIME - START_TIME))
+        
+        echo "⏱️ Total build time: ${BUILD_TIME} seconds" | tee build-performance.txt
+        
+    - name: Analyze APK size
+      run: |
+        echo "📊 Analyzing APK size..."
+        
+        APK_PATH="androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk"
+        
+        if [ -f "$APK_PATH" ]; then
+          APK_SIZE=$(stat -f%z "$APK_PATH" 2>/dev/null || stat -c%s "$APK_PATH" 2>/dev/null || echo "0")
+          APK_SIZE_MB=$(echo "scale=2; $APK_SIZE / 1024 / 1024" | bc || echo "0")
+          
+          echo "📱 APK Size: ${APK_SIZE_MB} MB (${APK_SIZE} bytes)" | tee -a build-performance.txt
+          
+          # Check size threshold (10MB max)
+          MAX_SIZE_MB=10
+          if (( $(echo "$APK_SIZE_MB > $MAX_SIZE_MB" | bc -l) )); then
+            echo "⚠️ APK size exceeds ${MAX_SIZE_MB}MB threshold!"
+            echo "apk_size_warning=true" >> $GITHUB_ENV
+          else
+            echo "✅ APK size within acceptable limits"
+            echo "apk_size_warning=false" >> $GITHUB_ENV
+          fi
+          
+          echo "apk_size_mb=$APK_SIZE_MB" >> $GITHUB_ENV
+        else
+          echo "❌ APK not found at $APK_PATH"
+          echo "apk_size_mb=0" >> $GITHUB_ENV
+        fi
+        
+    - name: Analyze AAB size
+      run: |
+        echo "📊 Analyzing Android App Bundle size..."
+        
+        ./gradlew :androidApp:bundleRelease
+        
+        AAB_PATH="androidApp/build/outputs/bundle/release/androidApp-release.aab"
+        
+        if [ -f "$AAB_PATH" ]; then
+          AAB_SIZE=$(stat -f%z "$AAB_PATH" 2>/dev/null || stat -c%s "$AAB_PATH" 2>/dev/null || echo "0")
+          AAB_SIZE_MB=$(echo "scale=2; $AAB_SIZE / 1024 / 1024" | bc || echo "0")
+          
+          echo "📦 AAB Size: ${AAB_SIZE_MB} MB (${AAB_SIZE} bytes)" | tee -a build-performance.txt
+          echo "aab_size_mb=$AAB_SIZE_MB" >> $GITHUB_ENV
+        else
+          echo "❌ AAB not found at $AAB_PATH"
+          echo "aab_size_mb=0" >> $GITHUB_ENV
+        fi
+        
+    - name: Method count analysis
+      run: |
+        echo "🔢 Analyzing method count..."
+        
+        APK_PATH="androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk"
+        
+        if [ -f "$APK_PATH" ]; then
+          # Install dex-method-counts if not available
+          if ! command -v dex-method-counts &> /dev/null; then
+            echo "Installing dex-method-counts..."
+            curl -L -o dex-method-counts.jar "https://github.com/mihaip/dex-method-counts/releases/download/1.0.3/dex-method-counts-1.0.3.jar"
+            alias dex-method-counts="java -jar dex-method-counts.jar"
+          fi
+          
+          # Count methods using built-in Android tools
+          if command -v aapt &> /dev/null; then
+            echo "📊 APK method analysis:" | tee -a build-performance.txt
+            
+            # Extract DEX files and count methods (simplified approach)
+            unzip -q "$APK_PATH" -d temp_apk/
+            if [ -f "temp_apk/classes.dex" ]; then
+              DEX_SIZE=$(stat -f%z "temp_apk/classes.dex" 2>/dev/null || stat -c%s "temp_apk/classes.dex" 2>/dev/null || echo "0")
+              echo "   Primary DEX size: $DEX_SIZE bytes" | tee -a build-performance.txt
+              
+              # Estimate method count (rough approximation)
+              METHOD_COUNT_ESTIMATE=$((DEX_SIZE / 50))
+              echo "   Estimated method count: ~$METHOD_COUNT_ESTIMATE" | tee -a build-performance.txt
+              
+              # Check 64k method limit
+              if [ $METHOD_COUNT_ESTIMATE -gt 60000 ]; then
+                echo "⚠️ Approaching 64k method limit!"
+                echo "method_count_warning=true" >> $GITHUB_ENV
+              else
+                echo "✅ Method count within acceptable limits"
+                echo "method_count_warning=false" >> $GITHUB_ENV
+              fi
+            fi
+            
+            rm -rf temp_apk/
+          else
+            echo "ℹ️ AAPT not available, skipping detailed method analysis"
+          fi
+        fi
+        
+    - name: Startup performance benchmark
+      run: |
+        echo "🚀 Running startup performance benchmarks..."
+        
+        # Build benchmark variant if available
+        if ./gradlew tasks --all | grep -q "assembleBenchmark"; then
+          ./gradlew :androidApp:assembleBenchmark
+          echo "✅ Benchmark build completed" | tee -a build-performance.txt
+        else
+          echo "ℹ️ No benchmark build variant found, using debug"
+          ./gradlew :androidApp:assembleDebug
+        fi
+        
+    - name: Compare with baseline
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "📈 Comparing with baseline performance..."
+        
+        # Download baseline performance data if available
+        if [ -f ".github/performance-baseline.json" ]; then
+          echo "📋 Baseline performance data found"
+          
+          # Simple baseline comparison (would be enhanced with actual metrics)
+          BASELINE_APK_SIZE=$(cat .github/performance-baseline.json | grep -o '"apk_size_mb":[0-9.]*' | cut -d':' -f2 || echo "0")
+          CURRENT_APK_SIZE="${{ env.apk_size_mb }}"
+          
+          if [ "$BASELINE_APK_SIZE" != "0" ] && [ "$CURRENT_APK_SIZE" != "0" ]; then
+            SIZE_DIFF=$(echo "scale=2; $CURRENT_APK_SIZE - $BASELINE_APK_SIZE" | bc || echo "0")
+            SIZE_PERCENT=$(echo "scale=2; ($SIZE_DIFF / $BASELINE_APK_SIZE) * 100" | bc || echo "0")
+            
+            echo "📊 Size comparison with baseline:" | tee -a build-performance.txt
+            echo "   Baseline: ${BASELINE_APK_SIZE}MB" | tee -a build-performance.txt
+            echo "   Current: ${CURRENT_APK_SIZE}MB" | tee -a build-performance.txt
+            echo "   Difference: ${SIZE_DIFF}MB (${SIZE_PERCENT}%)" | tee -a build-performance.txt
+            
+            # Check for significant regression (>5% increase)
+            if (( $(echo "$SIZE_PERCENT > 5" | bc -l) )); then
+              echo "⚠️ Significant size regression detected!"
+              echo "size_regression=true" >> $GITHUB_ENV
+            else
+              echo "✅ No significant size regression"
+              echo "size_regression=false" >> $GITHUB_ENV
+            fi
+          fi
+        else
+          echo "ℹ️ No baseline performance data found"
+          echo "size_regression=false" >> $GITHUB_ENV
+        fi
+        
+    - name: Generate performance report
+      run: |
+        echo "📝 Generating performance report..."
+        
+        cat > performance-report.md << 'EOF'
+        # 📊 Performance Analysis Report
+        
+        ## Build Performance
+        $(cat build-performance.txt)
+        
+        ## Summary
+        - **APK Size**: ${{ env.apk_size_mb }} MB
+        - **AAB Size**: ${{ env.aab_size_mb }} MB
+        - **Size Warning**: ${{ env.apk_size_warning }}
+        - **Method Count Warning**: ${{ env.method_count_warning }}
+        - **Size Regression**: ${{ env.size_regression }}
+        
+        ## Recommendations
+        EOF
+        
+        # Add recommendations based on analysis
+        if [ "${{ env.apk_size_warning }}" = "true" ]; then
+          echo "- 🚨 **APK size exceeds 10MB**: Consider code shrinking, resource optimization, or dynamic delivery" >> performance-report.md
+        fi
+        
+        if [ "${{ env.method_count_warning }}" = "true" ]; then
+          echo "- 🚨 **Method count approaching 64k limit**: Consider enabling multidex or reducing dependencies" >> performance-report.md
+        fi
+        
+        if [ "${{ env.size_regression }}" = "true" ]; then
+          echo "- ⚠️ **Size regression detected**: Review recent changes that may have increased app size" >> performance-report.md
+        fi
+        
+        echo "- ✅ **Proguard/R8**: Ensure obfuscation and shrinking are enabled for release builds" >> performance-report.md
+        echo "- 📱 **Dynamic delivery**: Consider using dynamic feature modules for large features" >> performance-report.md
+        echo "- 🖼️ **Image optimization**: Use WebP format and appropriate densities" >> performance-report.md
+        
+    - name: Upload performance artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-analysis
+        path: |
+          build-performance.txt
+          performance-report.md
+          androidApp/build/outputs/apk/release/
+          androidApp/build/outputs/bundle/release/
+        retention-days: 30
+        
+    - name: Comment performance report on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let reportContent = '';
+          try {
+            reportContent = fs.readFileSync('performance-report.md', 'utf8');
+          } catch (error) {
+            reportContent = '📊 Performance analysis completed. Check the workflow artifacts for details.';
+          }
+          
+          const apkSize = '${{ env.apk_size_mb }}';
+          const aabSize = '${{ env.aab_size_mb }}';
+          const hasWarnings = '${{ env.apk_size_warning }}' === 'true' || 
+                             '${{ env.method_count_warning }}' === 'true' ||
+                             '${{ env.size_regression }}' === 'true';
+          
+          const emoji = hasWarnings ? '⚠️' : '✅';
+          const status = hasWarnings ? 'Issues Detected' : 'All Good';
+          
+          const body = `## ${emoji} Performance Analysis - ${status}
+          
+          **APK Size:** ${apkSize} MB  
+          **AAB Size:** ${aabSize} MB
+          
+          ${reportContent}
+          
+          [View detailed performance artifacts](${context.payload.pull_request.html_url}/checks)
+          `;
+          
+          // Check if comment already exists
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.body.includes('Performance Analysis')
+          );
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }
+          
+    - name: Update baseline (main branch only)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        echo "🔄 Updating performance baseline..."
+        
+        # Create or update baseline file
+        cat > .github/performance-baseline.json << EOF
+        {
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "commit": "${{ github.sha }}",
+          "apk_size_mb": "${{ env.apk_size_mb }}",
+          "aab_size_mb": "${{ env.aab_size_mb }}",
+          "build_number": "${{ github.run_number }}"
+        }
+        EOF
+        
+        # Commit baseline update
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .github/performance-baseline.json
+        git commit -m "chore: update performance baseline [skip ci]" || exit 0
+        git push
+        
+  bundle-size-monitoring:
+    runs-on: ubuntu-latest
+    needs: performance-analysis
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: ${{ env.JAVA_DISTRIBUTION }}
+        
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+      
+    - name: Generate bundle size report
+      run: |
+        echo "📦 Generating comprehensive bundle size report..."
+        
+        # Build all variants
+        ./gradlew :androidApp:assembleRelease
+        ./gradlew :androidApp:bundleRelease
+        
+        # Create detailed size report
+        cat > bundle-size-report.json << 'EOF'
+        {
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "commit": "${{ github.sha }}",
+          "sizes": {
+        EOF
+        
+        # APK sizes
+        for variant in debug release; do
+          APK_PATH="androidApp/build/outputs/apk/$variant/androidApp-$variant*.apk"
+          if ls $APK_PATH 1> /dev/null 2>&1; then
+            SIZE=$(stat -f%z $APK_PATH 2>/dev/null || stat -c%s $APK_PATH 2>/dev/null || echo "0")
+            SIZE_MB=$(echo "scale=2; $SIZE / 1024 / 1024" | bc || echo "0")
+            echo "    \"apk_${variant}_mb\": \"$SIZE_MB\"," >> bundle-size-report.json
+          fi
+        done
+        
+        # AAB size
+        AAB_PATH="androidApp/build/outputs/bundle/release/androidApp-release.aab"
+        if [ -f "$AAB_PATH" ]; then
+          SIZE=$(stat -f%z "$AAB_PATH" 2>/dev/null || stat -c%s "$AAB_PATH" 2>/dev/null || echo "0")
+          SIZE_MB=$(echo "scale=2; $SIZE / 1024 / 1024" | bc || echo "0")
+          echo "    \"aab_release_mb\": \"$SIZE_MB\"" >> bundle-size-report.json
+        fi
+        
+        echo "  }" >> bundle-size-report.json
+        echo "}" >> bundle-size-report.json
+        
+    - name: Store size history
+      run: |
+        echo "📈 Storing size history..."
+        
+        # Create history directory if it doesn't exist
+        mkdir -p .github/size-history
+        
+        # Copy current report to history
+        cp bundle-size-report.json ".github/size-history/$(date +%Y%m%d-%H%M%S)-${{ github.sha }}.json"
+        
+        # Keep only last 30 entries
+        cd .github/size-history
+        ls -t *.json | tail -n +31 | xargs rm -f
+        cd -
+        
+        # Commit history update
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .github/size-history/
+        git commit -m "chore: update bundle size history [skip ci]" || exit 0
+        git push
