@@ -16,6 +16,12 @@ kotlin {
         }
     }
     
+    jvm {
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+    
     iosX64()
     iosArm64()
     iosSimulatorArm64()
@@ -51,6 +57,20 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
+        }
+        
+        jvmTest.dependencies {
+            implementation("io.mockk:mockk:1.13.8")
+            implementation("org.junit.jupiter:junit-jupiter:5.10.1")
+            implementation("org.junit.jupiter:junit-jupiter-params:5.10.1")
+        }
+        
+        // Android-specific test dependencies would go here
+        // Note: Android test source sets need to be properly configured for KMP
+        
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.sqldelight.sqlite.driver)
         }
         
         androidMain.dependencies {
@@ -127,4 +147,23 @@ tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>().configureEach {
 tasks.register("dokkaHtmlMultiModule", org.jetbrains.dokka.gradle.DokkaMultiModuleTask::class) {
     outputDirectory.set(file("${buildDir}/dokka/htmlMultiModule"))
     moduleName.set("WeatherKMP Shared")
+}
+
+// Enhanced Kover configuration for 2025 standards
+tasks.register("generateCoverageBadges") {
+    group = "verification"
+    description = "Generate coverage badges from Kover XML reports"
+    dependsOn("koverXmlReport")
+    
+    doLast {
+        exec {
+            commandLine("bash", "../scripts/generate-coverage-badges.sh", "--skip-tests")
+        }
+    }
+}
+
+tasks.named("koverXmlReport") {
+    doLast {
+        println("📊 Coverage report generated")
+    }
 }

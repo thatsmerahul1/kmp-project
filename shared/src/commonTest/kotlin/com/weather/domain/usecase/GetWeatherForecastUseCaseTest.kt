@@ -4,9 +4,7 @@ import app.cash.turbine.test
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import com.weather.domain.repository.WeatherRepository
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import com.weather.testing.FakeWeatherRepository
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
@@ -14,59 +12,77 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Tests for GetWeatherForecastUseCase using cross-platform fake implementations
+ */
 class GetWeatherForecastUseCaseTest {
 
-    private val mockRepository = mockk<WeatherRepository>()
-    private val useCase = GetWeatherForecastUseCase(mockRepository)
-
-    private val sampleWeatherList = listOf(
-        Weather(
-            date = LocalDate(2024, 1, 15),
-            condition = WeatherCondition.CLEAR,
-            temperatureHigh = 25.0,
-            temperatureLow = 15.0,
-            humidity = 60,
-            icon = "01d",
-            description = "Clear sky"
-        )
-    )
+    private val fakeRepository = FakeWeatherRepository()
+    private val useCase = GetWeatherForecastUseCase(fakeRepository)
 
     @Test
     fun `invoke should return weather forecast from repository`() = runTest {
         // Given
-        every { mockRepository.getWeatherForecast() } returns flowOf(Result.success(sampleWeatherList))
+        val expectedWeather = listOf(
+            Weather(
+                date = LocalDate(2025, 1, 15),
+                condition = WeatherCondition.CLEAR,
+                temperatureHigh = 25.0,
+                temperatureLow = 15.0,
+                humidity = 65,
+                icon = "01d",
+                description = "Clear sky"
+            )
+        )
+        fakeRepository.setForecastResult(kotlin.Result.success(expectedWeather))
 
         // When
-        val result = useCase()
+        val flow = useCase()
 
         // Then
-        result.test {
-            val weatherResult = awaitItem()
-            assertTrue(weatherResult.isSuccess)
-            assertEquals(sampleWeatherList, weatherResult.getOrNull())
+        flow.test {
+            val result = awaitItem()
+            assertTrue(result.isSuccess, "Use case should return successful result")
+            assertEquals(expectedWeather, result.getOrNull())
             awaitComplete()
         }
-
-        verify { mockRepository.getWeatherForecast() }
+        
+        assertEquals(1, fakeRepository.getForecastCallCount)
     }
 
     @Test
-    fun `invoke should return error from repository`() = runTest {
+    fun `invoke should return error when repository fails`() = runTest {
         // Given
-        val errorMessage = "Network error"
-        every { mockRepository.getWeatherForecast() } returns flowOf(Result.failure(Exception(errorMessage)))
+        val expectedException = Exception("Network error")
+        fakeRepository.setForecastResult(kotlin.Result.failure(expectedException))
 
         // When
-        val result = useCase()
+        val flow = useCase()
 
         // Then
-        result.test {
-            val weatherResult = awaitItem()
-            assertTrue(weatherResult.isFailure)
-            assertEquals(errorMessage, weatherResult.exceptionOrNull()?.message)
+        flow.test {
+            val result = awaitItem()
+            assertTrue(result.isFailure, "Use case should return failure when repository fails")
+            assertEquals("Network error", result.exceptionOrNull()?.message)
+            awaitComplete()
+        }
+        
+        assertEquals(1, fakeRepository.getForecastCallCount)
+    }
+
+    @Test
+    fun `invoke should call repository getWeatherForecast`() = runTest {
+        // Given
+        fakeRepository.reset()
+
+        // When
+        val flow = useCase()
+        flow.test {
+            awaitItem()
             awaitComplete()
         }
 
-        verify { mockRepository.getWeatherForecast() }
+        // Then
+        assertEquals(1, fakeRepository.getForecastCallCount)
     }
 }

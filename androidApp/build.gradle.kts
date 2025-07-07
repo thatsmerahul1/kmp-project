@@ -23,8 +23,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false  // Temporarily disabled due to R8 issues
+            isShrinkResources = false
             
             // Enhanced R8 optimization for 2025 with security obfuscation
             proguardFiles(
@@ -57,8 +57,8 @@ android {
         // Create benchmark build type for performance testing
         create("benchmark") {
             initWith(getByName("release"))
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false  // Temporarily disabled due to R8 issues
+            isShrinkResources = false
             isDebuggable = false
             applicationIdSuffix = ".benchmark"
             versionNameSuffix = "-benchmark"
