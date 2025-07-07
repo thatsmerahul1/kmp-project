@@ -21,7 +21,8 @@ import kotlinx.datetime.Clock
  * Weather domain mocks
  */
 class FakeWeatherRepository(
-    private var forecastResult: kotlin.Result<List<Weather>> = kotlin.Result.success(listOf(aWeather().build()))
+    private var shouldReturnError: Boolean = false,
+    private var forecastResult: com.weather.domain.common.Result<List<Weather>> = com.weather.domain.common.Result.Success(listOf(aWeather().build()))
 ) : WeatherRepository {
     
     var getForecastCallCount = 0
@@ -31,29 +32,54 @@ class FakeWeatherRepository(
     var clearCacheCallCount = 0
         private set
     
-    override fun getWeatherForecast(): Flow<kotlin.Result<List<Weather>>> {
+    private var cachedData: List<Weather>? = null
+    
+    override fun getWeatherForecast(): Flow<com.weather.domain.common.Result<List<Weather>>> {
         getForecastCallCount++
-        return flowOf(forecastResult)
+        return flowOf(if (shouldReturnError) {
+            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Network("Test error"))
+        } else {
+            forecastResult
+        })
     }
     
-    override suspend fun refreshWeatherForecast(): kotlin.Result<List<Weather>> {
+    override suspend fun refreshWeatherForecast(): com.weather.domain.common.Result<List<Weather>> {
         refreshCallCount++
-        return forecastResult
+        return if (shouldReturnError) {
+            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Network("Test error"))
+        } else {
+            forecastResult
+        }
     }
     
     override suspend fun clearCache() {
         clearCacheCallCount++
+        cachedData = null
     }
     
     // Test helpers
-    fun setForecastResult(result: kotlin.Result<List<Weather>>) {
+    fun setForecastResult(result: com.weather.domain.common.Result<List<Weather>>) {
         forecastResult = result
+    }
+    
+    fun setForecastResult(result: kotlin.Result<List<Weather>>) {
+        forecastResult = if (result.isSuccess) {
+            com.weather.domain.common.Result.Success(result.getOrNull()!!)
+        } else {
+            com.weather.domain.common.Result.Error(com.weather.domain.common.DomainException.Unknown(result.exceptionOrNull()?.message ?: "Unknown error"))
+        }
+    }
+    
+    fun setCachedData(data: List<Weather>) {
+        cachedData = data
+        forecastResult = com.weather.domain.common.Result.Success(data)
     }
     
     fun reset() {
         getForecastCallCount = 0
         refreshCallCount = 0
         clearCacheCallCount = 0
+        cachedData = null
     }
 }
 
