@@ -13,12 +13,12 @@
 -optimizationpasses 5
 -allowaccessmodification
 -repackageclasses ''
--flattenpackagehierarchy ''
 
 # Use random class names for maximum obfuscation
--obfuscationdictionary obfuscation-dictionary.txt
--classobfuscationdictionary obfuscation-dictionary.txt
--packageobfuscationdictionary obfuscation-dictionary.txt
+# Note: Obfuscation dictionaries disabled to fix R8 build issues
+# -obfuscationdictionary obfuscation-dictionary.txt
+# -classobfuscationdictionary obfuscation-dictionary.txt
+# -packageobfuscationdictionary obfuscation-dictionary.txt
 
 # ========================================================================================
 # ANTI-REVERSE ENGINEERING PROTECTION
@@ -289,4 +289,3 @@
 -allowaccessmodification
 -mergeinterfacesaggressively
 -overloadaggressively
--repackageclasses ''
