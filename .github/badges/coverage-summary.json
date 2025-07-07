@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-07-07T07:41:20Z",
+  "project": "WeatherKMP",
+  "platforms": {
+    "android": {
+      "line": 0
+,
+      "branch": 0
+,
+      "instruction": 0
+    }
+,
+    "common": {
+      "line": 0
+,
+      "branch": 0
+,
+      "instruction": 0
+    }
+,
+    "ios": {
+      "line": 0
+,
+      "branch": 0
+,
+      "instruction": 0
+    }
+
+  },
+  "thresholds": {
+    "excellent": 90,
+    "good": 80,
+    "moderate": 70,
+    "poor": 60
+  }
+}
