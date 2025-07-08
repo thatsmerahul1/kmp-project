@@ -256,11 +256,24 @@ struct DetailRow: View {
                 condition: WeatherCondition.clear,
                 temperatureHigh: 25.0,
                 temperatureLow: 15.0,
+                temperatureCurrent: 24.0,
                 humidity: 65,
                 icon: "01d",
                 description: "Clear",
+                pressure: nil,
                 windSpeed: 12.5,
-                windDirection: 225
+                windDirection: 225,
+                visibility: nil,
+                uvIndex: nil,
+                precipitationChance: nil,
+                precipitationAmount: nil,
+                cloudCover: nil,
+                feelsLike: nil,
+                dewPoint: nil,
+                sunrise: nil,
+                sunset: nil,
+                moonPhase: nil,
+                airQuality: nil
             ))
             .frame(maxWidth: .infinity)
             
@@ -269,12 +282,24 @@ struct DetailRow: View {
                 condition: WeatherCondition.clear,
                 temperatureHigh: 25.0,
                 temperatureLow: 15.0,
+                temperatureCurrent: 24.0,
                 humidity: 65,
                 icon: "01d",
                 description: "Clear",
                 pressure: 1013.2,
+                windSpeed: nil,
+                windDirection: nil,
                 visibility: 10.0,
-                cloudCover: 15
+                uvIndex: nil,
+                precipitationChance: nil,
+                precipitationAmount: nil,
+                cloudCover: 15,
+                feelsLike: nil,
+                dewPoint: nil,
+                sunrise: nil,
+                sunset: nil,
+                moonPhase: nil,
+                airQuality: nil
             ))
             .frame(maxWidth: .infinity)
         }

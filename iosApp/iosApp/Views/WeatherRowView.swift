@@ -28,21 +28,7 @@ struct WeatherRowView: View {
                     .lineLimit(1)
             }
             
-            Spacer()
-            VStack(alignment: .leading, spacing: 10) {}
-            .padding(32)
-            .background(
-              EllipticalGradient(
-                stops: [
-                  Gradient.Stop(color: Color(red: 0.27, green: 0.15, blue: 0.55), location: 0.00),
-                  Gradient.Stop(color: Color(red: 0.18, green: 0.2, blue: 0.35), location: 1.00),
-                ],
-                center: UnitPoint(x: 0.93, y: 0.74)
-              )
-            )
-            .cornerRadius(44)
-            .shadow(color: Color(red: 0.29, green: 0.22, blue: 0.5).opacity(0.7), radius: 50, x: 0, y: 20)
-            Spacer()
+            Spacer(minLength: 16)
             
             VStack(alignment: .trailing) {
                 Text("\(Int(weather.temperatureHigh))°")
@@ -71,9 +57,24 @@ struct WeatherRowView: View {
             condition: WeatherCondition.clear,
             temperatureHigh: 22.0,
             temperatureLow: 15.0,
+            temperatureCurrent: 20.0,
             humidity: 65,
             icon: "01d",
-            description: "Clear sky"
+            description: "Clear sky",
+            pressure: 1013.2,
+            windSpeed: 12.5,
+            windDirection: 225,
+            visibility: 10.0,
+            uvIndex: 6,
+            precipitationChance: 20,
+            precipitationAmount: 0.5,
+            cloudCover: 15,
+            feelsLike: 21.0,
+            dewPoint: 12.0,
+            sunrise: "06:30",
+            sunset: "18:45",
+            moonPhase: "Waxing Crescent",
+            airQuality: nil
         )
     )
 }
