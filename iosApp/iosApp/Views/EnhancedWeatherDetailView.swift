@@ -250,9 +250,24 @@ struct EnhancedDetailCard: View {
                 condition: WeatherCondition.clear,
                 temperatureHigh: 25.0,
                 temperatureLow: 15.0,
+                temperatureCurrent: 25.0,
                 humidity: 65,
                 icon: "01d",
-                description: "Clear sky with pleasant weather"
+                description: "Clear sky with pleasant weather",
+                pressure: 1015.0,
+                windSpeed: 10.0,
+                windDirection: 180,
+                visibility: 10.0,
+                uvIndex: 5,
+                precipitationChance: 10,
+                precipitationAmount: 0.0,
+                cloudCover: 20,
+                feelsLike: 25.0,
+                dewPoint: 12.0,
+                sunrise: "06:30",
+                sunset: "18:45",
+                moonPhase: "Waxing Crescent",
+                airQuality: nil
             )
         )
     }
