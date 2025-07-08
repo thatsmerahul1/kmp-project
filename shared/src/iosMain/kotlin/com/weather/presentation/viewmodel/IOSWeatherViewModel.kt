@@ -15,6 +15,8 @@ class IOSWeatherViewModel {
     private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val weatherViewModel = WeatherViewModel(
         KoinHelper.get(),
+        KoinHelper.get(),
+        KoinHelper.get(),
         KoinHelper.get()
     )
     

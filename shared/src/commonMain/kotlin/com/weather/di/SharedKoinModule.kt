@@ -8,6 +8,7 @@ val sharedKoinModules = listOf(
     networkModule,
     repositoryModule,
     useCaseModule,
+    serviceModule,
     viewModelModule
 )
 

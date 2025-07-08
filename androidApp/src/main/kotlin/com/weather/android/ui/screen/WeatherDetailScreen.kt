@@ -45,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.weather.android.ui.theme.AtomicDesignSystem
+import com.weather.android.ui.molecules.*
 import com.weather.android.util.WeatherUtils
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
@@ -248,21 +249,49 @@ fun WeatherDetailScreen(
                 }
             }
 
-            // Enhanced detail cards grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            // Enhanced detail cards - comprehensive weather information
+            Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.height(260.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(getDetailCards(weather)) { card ->
-                    EnhancedDetailCard(
-                        icon = card.icon,
-                        title = card.title,
-                        value = card.value,
-                        subtitle = card.subtitle
+                // Temperature details
+                TemperatureDetailCard(weather = weather)
+                
+                // Wind and atmospheric conditions in a row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    WindDetailCard(
+                        weather = weather,
+                        modifier = Modifier.weight(1f)
+                    )
+                    AtmosphericDetailCard(
+                        weather = weather,
+                        modifier = Modifier.weight(1f)
                     )
                 }
+                
+                // Precipitation and UV Index in a row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PrecipitationDetailCard(
+                        weather = weather,
+                        modifier = Modifier.weight(1f)
+                    )
+                    UVIndexDetailCard(
+                        weather = weather,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                // Air Quality (full width)
+                AirQualityDetailCard(weather = weather)
+                
+                // Sun & Moon information
+                SunMoonDetailCard(weather = weather)
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -381,7 +410,7 @@ private fun getDetailCards(weather: Weather): List<DetailCardData> {
             icon = "💧",
             title = "Humidity",
             value = "${weather.humidity}%",
-            subtitle = getHumidityDescription(weather.humidity.toInt())
+            subtitle = getHumidityDescription(weather.humidity)
         ),
         DetailCardData(
             icon = WeatherUtils.getWeatherEmoji(weather.condition),
@@ -440,9 +469,24 @@ fun WeatherDetailScreenPreview() {
         condition = WeatherCondition.CLEAR,
         temperatureHigh = 25.0,
         temperatureLow = 15.0,
+        temperatureCurrent = 22.0,
         humidity = 65,
         icon = "01d",
-        description = "Clear sky with pleasant weather"
+        description = "Clear sky with pleasant weather",
+        // Enhanced weather details for preview
+        pressure = 1013.2,
+        windSpeed = 12.5,
+        windDirection = 225,
+        visibility = 10.0,
+        uvIndex = 6,
+        precipitationChance = 20,
+        precipitationAmount = 0.5,
+        cloudCover = 15,
+        feelsLike = 24.0,
+        dewPoint = 12.0,
+        sunrise = "06:30",
+        sunset = "18:45",
+        moonPhase = "Waxing Crescent"
     )
 
     WeatherDetailScreen(

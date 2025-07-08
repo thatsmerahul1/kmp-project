@@ -1,7 +1,7 @@
 package com.weather.domain.model
 
 data class CacheConfig(
-    val cacheExpiryHours: Int = 24,
+    val cacheExpiryHours: Double = 1.0, // 1 hour cache expiry
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS
 )
 

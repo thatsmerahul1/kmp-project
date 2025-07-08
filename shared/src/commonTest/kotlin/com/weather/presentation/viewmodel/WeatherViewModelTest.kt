@@ -3,9 +3,16 @@ package com.weather.presentation.viewmodel
 import app.cash.turbine.test
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
+import com.weather.domain.model.LocationData
+import com.weather.domain.model.LocationSearchResult
+import com.weather.domain.model.LocationSource
 import com.weather.domain.repository.WeatherRepository
 import com.weather.domain.usecase.GetWeatherForecastUseCase
 import com.weather.domain.usecase.RefreshWeatherUseCase
+import com.weather.domain.service.LocationService
+import com.weather.domain.permission.PermissionManager
+import com.weather.domain.permission.Permission
+import com.weather.domain.permission.PermissionStatus
 import com.weather.domain.common.Result
 import com.weather.domain.common.DomainException
 import com.weather.domain.common.isSuccess
@@ -36,6 +43,8 @@ class WeatherViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeWeatherRepository
+    private lateinit var fakeLocationService: FakeLocationService
+    private lateinit var fakePermissionManager: FakePermissionManager
     private lateinit var getWeatherUseCase: GetWeatherForecastUseCase
     private lateinit var refreshWeatherUseCase: RefreshWeatherUseCase
     private lateinit var viewModel: WeatherViewModel
@@ -44,9 +53,11 @@ class WeatherViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeWeatherRepository()
+        fakeLocationService = FakeLocationService()
+        fakePermissionManager = FakePermissionManager()
         getWeatherUseCase = GetWeatherForecastUseCase(fakeRepository)
         refreshWeatherUseCase = RefreshWeatherUseCase(fakeRepository)
-        viewModel = WeatherViewModel(getWeatherUseCase, refreshWeatherUseCase)
+        viewModel = WeatherViewModel(getWeatherUseCase, refreshWeatherUseCase, fakeLocationService, fakePermissionManager)
     }
 
     @AfterTest
@@ -156,4 +167,42 @@ class WeatherViewModelTest {
         assertEquals(1, fakeRepository.getForecastCallCount)
         assertEquals(1, fakeRepository.refreshCallCount)
     }
+}
+
+class FakeLocationService : LocationService {
+    private val defaultLocation = LocationData(
+        latitude = 12.9716,
+        longitude = 77.5946,
+        cityName = "Bengaluru",
+        countryName = "India",
+        displayName = "Bengaluru, India"
+    )
+    
+    override suspend fun getCurrentLocation(): LocationData = defaultLocation
+    
+    override suspend fun getLocationBySource(source: LocationSource): LocationData? = defaultLocation
+    
+    override suspend fun searchLocations(query: String): List<LocationSearchResult> = emptyList()
+    
+    override suspend fun setUserSelectedLocation(location: LocationData) {}
+    
+    override suspend fun getUserSelectedLocation(): LocationData? = null
+    
+    override suspend fun clearUserSelectedLocation() {}
+    
+    override fun observeCurrentLocation(): kotlinx.coroutines.flow.Flow<LocationData> = 
+        kotlinx.coroutines.flow.flowOf(defaultLocation)
+    
+    override suspend fun getDefaultLocation(): LocationData = defaultLocation
+}
+
+class FakePermissionManager : PermissionManager {
+    override suspend fun checkPermission(permission: Permission): PermissionStatus = PermissionStatus.GRANTED
+    override suspend fun requestPermission(permission: Permission): PermissionStatus = PermissionStatus.GRANTED
+    override suspend fun requestPermissions(permissions: List<Permission>): Map<Permission, PermissionStatus> = 
+        permissions.associateWith { PermissionStatus.GRANTED }
+    override suspend fun hasLocationPermission(): Boolean = true
+    override suspend fun requestLocationPermission(): Boolean = true
+    override suspend fun openAppSettings() {}
+    override suspend fun shouldShowRationale(permission: Permission): Boolean = false
 }

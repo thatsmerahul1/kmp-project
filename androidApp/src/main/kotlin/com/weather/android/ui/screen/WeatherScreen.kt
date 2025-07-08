@@ -3,6 +3,7 @@ package com.weather.android.ui.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,16 +14,22 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -32,6 +39,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.weather.android.ui.component.LoadingIndicator
 import com.weather.android.ui.component.WeatherItem
+import com.weather.android.ui.molecules.LocationHeader
+import com.weather.android.ui.molecules.LocationPickerBottomSheet
+import com.weather.android.ui.molecules.ErrorStateView
+import com.weather.android.ui.molecules.NoDataOfflineView
 import com.weather.domain.model.Weather
 import com.weather.domain.model.WeatherCondition
 import com.weather.presentation.state.WeatherUiEvent
@@ -46,6 +57,9 @@ fun WeatherScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pullToRefreshState = rememberPullToRefreshState()
+    var showLocationBottomSheet by remember { mutableStateOf(false) }
+    var searchResults by remember { mutableStateOf(emptyList<com.weather.domain.model.LocationSearchResult>()) }
+    var isSearching by remember { mutableStateOf(false) }
 
     LaunchedEffect(pullToRefreshState.isRefreshing) {
         if (pullToRefreshState.isRefreshing) {
@@ -59,14 +73,84 @@ fun WeatherScreen(
         }
     }
 
+    LaunchedEffect(uiState.showLocationPicker) {
+        showLocationBottomSheet = uiState.showLocationPicker
+    }
+
+    WeatherScreenContent(
+        uiState = uiState,
+        pullToRefreshState = pullToRefreshState,
+        onEvent = viewModel::onEvent,
+        onLocationClick = { 
+            showLocationBottomSheet = true
+            viewModel.onEvent(WeatherUiEvent.ShowLocationPicker)
+        }
+    )
+    
+    if (showLocationBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { 
+                showLocationBottomSheet = false
+                viewModel.onEvent(WeatherUiEvent.HideLocationPicker)
+            }
+        ) {
+            LocationPickerBottomSheet(
+                onDismiss = { 
+                    showLocationBottomSheet = false
+                    viewModel.onEvent(WeatherUiEvent.HideLocationPicker)
+                },
+                onLocationSelected = { location ->
+                    viewModel.onEvent(WeatherUiEvent.SelectLocation(location))
+                    showLocationBottomSheet = false
+                },
+                onRequestCurrentLocation = {
+                    viewModel.onEvent(WeatherUiEvent.RequestCurrentLocation)
+                },
+                searchResults = searchResults,
+                onSearchQueryChanged = { query ->
+                    if (query.isNotBlank()) {
+                        isSearching = true
+                        viewModel.onEvent(WeatherUiEvent.SearchLocations(query))
+                    } else {
+                        searchResults = emptyList()
+                        isSearching = false
+                    }
+                },
+                isSearching = isSearching,
+                isLocationLoading = uiState.isLocationLoading,
+                currentLocation = uiState.currentLocation
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeatherScreenContent(
+    uiState: com.weather.presentation.state.WeatherUiState,
+    pullToRefreshState: androidx.compose.material3.pulltorefresh.PullToRefreshState,
+    onEvent: (WeatherUiEvent) -> Unit,
+    onLocationClick: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Weather Forecast",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Weather Forecast",
+                            fontWeight = FontWeight.Bold
+                        )
+                        LocationHeader(
+                            currentLocation = uiState.currentLocation,
+                            onLocationClick = onLocationClick,
+                            isLocationLoading = uiState.isLocationLoading
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -87,10 +171,17 @@ fun WeatherScreen(
                 }
                 
                 uiState.error != null && uiState.weatherList.isEmpty() -> {
-                    ErrorContent(
-                        error = uiState.error!!,
-                        onRetry = { viewModel.onEvent(WeatherUiEvent.RetryLoad) }
-                    )
+                    if (uiState.connectionStatus == com.weather.presentation.state.ConnectionStatus.OFFLINE) {
+                        NoDataOfflineView(
+                            onRetry = { onEvent(WeatherUiEvent.RetryLoad) }
+                        )
+                    } else {
+                        ErrorStateView(
+                            error = uiState.error!!,
+                            connectionStatus = uiState.connectionStatus,
+                            onRetry = { onEvent(WeatherUiEvent.RetryLoad) }
+                        )
+                    }
                 }
                 
                 else -> {
@@ -108,7 +199,7 @@ fun WeatherScreen(
                             item {
                                 ErrorCard(
                                     error = uiState.error!!,
-                                    onDismiss = { viewModel.onEvent(WeatherUiEvent.ClearError) }
+                                    onDismiss = { onEvent(WeatherUiEvent.ClearError) }
                                 )
                             }
                         }
